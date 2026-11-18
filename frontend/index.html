@@ -1,101 +1,180 @@
 <!doctype html>
 <!-- 계획 관리 화면 (F3016 · F3018)
      서버: uvicorn app.main:app --reload             (TripPlanner 폴더, 터미널 1)
-     화면: python -m http.server 5500 -d frontend    (TripPlanner 폴더, 터미널 2)  →  http://localhost:5500 -->
+     화면: python -m http.server 5500 -d frontend    (TripPlanner 폴더, 터미널 2)  →  http://localhost:5500
+
+     디자인: 공항 안내판(남색 · 신호 노랑) + 하루 시간표.
+     일정 블록의 높이는 머무는 시간에 비례하고, 시간이 겹치는 일정은 나란히 놓여 노랑으로 표시된다. -->
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TripPlanner · 내 여행 일정</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #f6f7f9; --card: #fff; --line: #e3e6eb; --text: #1d2330; --sub: #6b7385;
-      --main: #2f6fed; --main-weak: #e8effd; --warn: #b4560b; --warn-bg: #fff4e5; --danger: #c83737;
+      --navy: #1c2c4c;        /* 안내판 바탕 · 본문 글자 */
+      --navy-soft: #2e4170;
+      --signal: #ffc629;      /* 신호 노랑 — 겹침 · 핵심 강조에만 */
+      --signal-ink: #5c4300;
+      --fog: #eef1f5;         /* 화면 바탕 */
+      --paper: #ffffff;
+      --rule: #d5dbe5;
+      --sub: #5d6880;
+      --danger: #c63b32;
+      --hour: 64px;           /* 시간표 한 시간의 높이 */
+      --font: "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-           background: var(--bg); color: var(--text); }
-    header { background: var(--card); border-bottom: 1px solid var(--line); padding: 16px 24px;
-             display: flex; align-items: baseline; gap: 12px; }
-    header h1 { margin: 0; font-size: 20px; }
-    header span { color: var(--sub); font-size: 14px; }
-    main { max-width: 1040px; margin: 24px auto; padding: 0 16px;
-           display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
-    @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
-    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
-    h2 { margin: 0 0 16px; font-size: 16px; }
-    label { display: block; font-size: 13px; color: var(--sub); margin: 12px 0 4px; }
-    input, textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px;
-                      font: inherit; font-size: 14px; }
-    input::placeholder, textarea::placeholder { color: #aab0bc; }
-    input:focus, textarea:focus { outline: 2px solid var(--main-weak); border-color: var(--main); }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    button { font: inherit; font-size: 14px; border-radius: 8px; padding: 9px 14px; cursor: pointer;
-             border: 1px solid var(--line); background: var(--card); color: var(--text); }
-    button.primary { background: var(--main); border-color: var(--main); color: #fff; }
-    button.danger { color: var(--danger); }
-    .actions { display: flex; gap: 8px; margin-top: 16px; }
-    .actions .primary { flex: 1; }
-    .notice { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
-    .notice.warn { background: var(--warn-bg); color: var(--warn); }
-    .notice.error { background: #fdecec; color: var(--danger); }
-    .notice.ok { background: var(--main-weak); color: var(--main); }
-    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .toolbar h2 { margin: 0; }
-    .toolbar input { width: auto; }
-    .day { margin-top: 18px; }
-    .day:first-child { margin-top: 0; }
-    .day h3 { font-size: 14px; color: var(--sub); margin: 0 0 8px; font-weight: 600; }
-    .plan { display: flex; gap: 14px; align-items: center; padding: 12px 14px; border: 1px solid var(--line);
-            border-radius: 10px; margin-bottom: 8px; }
-    .plan.overlap { border-color: #f3c48b; background: var(--warn-bg); }
-    .time { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 96px; }
-    .info { flex: 1; min-width: 0; }
-    .info b { display: block; }
-    .info small { color: var(--sub); }
-    .plan .btns { display: flex; gap: 6px; }
-    .plan .btns button { padding: 6px 10px; font-size: 13px; }
-    .empty { color: var(--sub); text-align: center; padding: 40px 0; }
+    body { margin: 0; font-family: var(--font); background: var(--fog); color: var(--navy);
+           font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    button, input, textarea { font: inherit; color: inherit; }
+    :focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }
+
+    /* ── 상단 안내판 ───────────────────────── */
+    .board { background: var(--navy); color: #fff; }
+    .board-inner { max-width: 1120px; margin: 0 auto; padding: 22px 24px 20px;
+                   display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark { width: 34px; height: 34px; border-radius: 8px; background: var(--signal);
+                  display: grid; place-items: center; }
+    .brand-mark svg { width: 20px; height: 20px; }
+    .brand h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+    .summary { display: flex; gap: 28px; }
+    .summary div { display: flex; flex-direction: column; }
+    .summary b { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .summary span { font-size: 13px; color: #b8c3da; }
+    .summary .warn b { color: var(--signal); }
+
+    /* ── 본문 ─────────────────────────────── */
+    main { max-width: 1120px; margin: 0 auto; padding: 28px 24px 64px;
+           display: grid; grid-template-columns: 320px 1fr; gap: 32px; align-items: start; }
+    @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+
+    /* 폼 */
+    .panel { background: var(--paper); border-radius: 14px; padding: 22px; position: sticky; top: 20px;
+             box-shadow: 0 1px 0 var(--rule); }
+    @media (max-width: 860px) { .panel { position: static; } }
+    .panel h2 { margin: 0 0 4px; font-size: 18px; font-weight: 700; }
+    .panel p.hint { margin: 0 0 14px; color: var(--sub); font-size: 13px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: var(--sub); margin: 14px 0 6px; }
+    input, textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--rule); border-radius: 9px;
+                      background: var(--paper); font-size: 15px; transition: border-color .15s; }
+    input::placeholder, textarea::placeholder { color: #a3acbd; }
+    input:focus, textarea:focus { outline: none; border-color: var(--navy); }
+    textarea { resize: vertical; min-height: 64px; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .actions { display: flex; gap: 8px; margin-top: 20px; }
+    .btn { border: 1.5px solid var(--rule); background: var(--paper); border-radius: 9px;
+           padding: 10px 14px; font-weight: 600; cursor: pointer; }
+    .btn:hover { border-color: var(--navy); }
+    .btn.primary { flex: 1; background: var(--navy); border-color: var(--navy); color: #fff; }
+    .btn.primary:hover { background: var(--navy-soft); }
+    .btn.danger { color: var(--danger); }
+    .btn.danger:hover { border-color: var(--danger); }
+
+    .notice { margin-top: 16px; padding: 12px 14px; border-radius: 9px; font-size: 14px; }
+    .notice.ok { background: #e6ecf7; }
+    .notice.warn { background: #fff4d1; color: var(--signal-ink); border-left: 4px solid var(--signal); }
+    .notice.error { background: #fbe9e7; color: var(--danger); }
+    .notice ul { margin: 6px 0 0; padding-left: 18px; }
+
+    /* 일정 영역 */
+    .schedule-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+                     margin-bottom: 18px; flex-wrap: wrap; }
+    .schedule-head h2 { margin: 0; font-size: 18px; font-weight: 700; }
+    .filter { display: flex; align-items: center; gap: 8px; }
+    .filter input { width: auto; padding: 7px 10px; font-size: 14px; }
+    .filter button { border: 0; background: none; color: var(--sub); cursor: pointer; font-size: 13px; text-decoration: underline; }
+
+    /* 하루 = 날짜 머리 + 시간표 */
+    .day { margin-bottom: 36px; }
+    .day-head { display: flex; align-items: baseline; gap: 14px; padding-bottom: 10px;
+                border-bottom: 2px solid var(--navy); }
+    .day-date { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+    .day-meta { color: var(--sub); font-size: 14px; }
+    .day-meta strong { color: var(--navy); font-weight: 600; }
+
+    .timeline { position: relative; margin: 22px 0 0 56px; }
+    .hour { position: absolute; left: -56px; right: 0; height: 0; border-top: 1px solid var(--rule); }
+    .hour span { position: absolute; left: 0; top: -10px; width: 46px; font-size: 13px; color: var(--sub);
+                 font-variant-numeric: tabular-nums; background: var(--fog); }
+
+    .block { position: absolute; border: 0; text-align: left; cursor: pointer; overflow: hidden;
+             background: var(--paper); border-radius: 10px; padding: 8px 12px 8px 14px;
+             box-shadow: inset 4px 0 0 var(--navy), 0 1px 2px rgba(28,44,76,.12);
+             display: flex; flex-direction: column; gap: 1px; }
+    .block:hover { box-shadow: inset 4px 0 0 var(--navy), 0 0 0 1.5px var(--navy); }
+    .block .t { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .block .p { font-size: 15px; font-weight: 600; line-height: 1.3; }
+    .block .m { font-size: 13px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .block.short { flex-direction: row; align-items: center; gap: 10px; padding-top: 4px; padding-bottom: 4px; }
+    .block.short .m { display: none; }
+    .block.clash { background: #fff7dc; box-shadow: inset 4px 0 0 var(--signal), 0 1px 2px rgba(92,67,0,.15); }
+    .block.clash:hover { box-shadow: inset 4px 0 0 var(--signal), 0 0 0 1.5px var(--signal-ink); }
+    .block.editing { box-shadow: inset 4px 0 0 var(--navy), 0 0 0 2.5px var(--navy); }
+    .block.flash { animation: flash 1.2s ease-out; }
+    @keyframes flash { from { background: var(--signal); } }
+    @media (prefers-reduced-motion: reduce) { .block.flash { animation: none; } }
+
+    .empty { background: var(--paper); border-radius: 14px; padding: 48px 24px; text-align: center; color: var(--sub); }
+    .empty b { display: block; color: var(--navy); font-size: 17px; margin-bottom: 4px; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>TripPlanner</h1>
-    <span>내 여행 일정</span>
+  <header class="board">
+    <div class="board-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="#1c2c4c"><path d="M21 15.5v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V18l-2 1.5V21l3.5-1 3.5 1v-1.5L13 18v-5z"/></svg>
+        </div>
+        <h1>TripPlanner</h1>
+      </div>
+      <div class="summary" aria-live="polite">
+        <div><b id="sumDays">0</b><span>여행 날짜</span></div>
+        <div><b id="sumPlans">0</b><span>일정</span></div>
+        <div id="sumClashWrap"><b id="sumClash">0</b><span>시간 겹침</span></div>
+      </div>
+    </div>
   </header>
 
   <main>
-    <!-- 왼쪽: 저장 · 수정 폼 -->
-    <section class="card">
-      <h2 id="formTitle">새 일정 추가</h2>
+    <section class="panel" aria-labelledby="formTitle">
+      <h2 id="formTitle">일정 추가</h2>
+      <p class="hint" id="formHint">시간이 겹쳐도 저장되고, 겹치는 일정을 알려 드려요.</p>
       <form id="form">
         <label for="place_name">장소</label>
-        <input id="place_name" required maxlength="100" placeholder="예: 오사카성" />
+        <input id="place_name" required maxlength="100" placeholder="예: 오사카성" autocomplete="off" />
         <label for="city">도시</label>
-        <input id="city" required maxlength="50" placeholder="예: 오사카" />
+        <input id="city" required maxlength="50" placeholder="예: 오사카" autocomplete="off" />
         <label for="visit_date">날짜</label>
         <input id="visit_date" type="date" required />
-        <div class="row">
+        <div class="pair">
           <div><label for="start_time">시작</label><input id="start_time" type="time" required /></div>
           <div><label for="end_time">종료</label><input id="end_time" type="time" required /></div>
         </div>
-        <label for="memo">메모 (선택)</label>
-        <textarea id="memo" rows="2" maxlength="300"></textarea>
+        <label for="memo">메모</label>
+        <textarea id="memo" maxlength="300" placeholder="선택 사항"></textarea>
         <div class="actions">
-          <button class="primary" type="submit" id="submitBtn">저장</button>
-          <button type="button" id="cancelBtn" hidden>취소</button>
+          <button class="btn primary" type="submit" id="submitBtn">일정 저장</button>
+          <button class="btn danger" type="button" id="deleteBtn" hidden>삭제</button>
+          <button class="btn" type="button" id="cancelBtn" hidden>취소</button>
         </div>
       </form>
-      <div id="message"></div>
+      <div id="message" role="status"></div>
     </section>
 
-    <!-- 오른쪽: 목록 -->
-    <section class="card">
-      <div class="toolbar">
-        <h2>일정 목록</h2>
-        <input id="filterDate" type="date" title="날짜로 거르기" />
+    <section aria-labelledby="scheduleTitle">
+      <div class="schedule-head">
+        <h2 id="scheduleTitle">여행 일정</h2>
+        <div class="filter">
+          <input id="filterDate" type="date" aria-label="날짜로 거르기" />
+          <button type="button" id="clearFilter" hidden>전체 보기</button>
+        </div>
       </div>
-      <div id="list"><p class="empty">불러오는 중…</p></div>
+      <div id="list"></div>
     </section>
   </main>
 
@@ -103,129 +182,201 @@
     const API = "http://localhost:8000/api/plans";
     const FIELDS = ["place_name", "city", "visit_date", "start_time", "end_time", "memo"];
     const $ = (id) => document.getElementById(id);
-    let editingId = null;          // 수정 중인 일정 번호 (없으면 새로 저장)
-    let plansById = {};            // 수정 버튼이 폼에 값을 채울 때 쓴다
-    let overlapIds = new Set();    // 방금 저장 결과에서 겹친다고 알려 준 일정
+    const HOUR_PX = 64;            // CSS --hour 와 같은 값
+    const MIN_BLOCK = 34;          // 아주 짧은 일정도 글자가 보이게
+    let editingId = null;
+    let plansById = {};
+    let flashId = null;            // 방금 저장 · 수정한 일정 — 잠깐 노랗게 반짝인다
 
-    // 서버가 준 글자를 HTML 로 넣기 전에 바꾼다 (장소 이름에 < > 가 들어와도 화면이 깨지지 않게)
     const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-    const hm = (t) => t.slice(0, 5);                     // "14:00:00" → "14:00"
-    const dayLabel = (d) => new Date(d + "T00:00").toLocaleDateString("ko-KR",
-      { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+    const hm = (t) => t.slice(0, 5);
+    const toMin = (t) => +t.slice(0, 2) * 60 + +t.slice(3, 5);
+    const dayParts = (d) => {
+      const dt = new Date(d + "T00:00");
+      return { date: `${dt.getMonth() + 1}월 ${dt.getDate()}일`,
+               week: dt.toLocaleDateString("ko-KR", { weekday: "long" }), year: dt.getFullYear() };
+    };
 
     function show(kind, html) {
       $("message").innerHTML = html ? `<div class="notice ${kind}">${html}</div>` : "";
     }
 
-    // 서버 오류를 사람이 읽을 문장으로 (오류 원문 · 내부 정보는 화면에 내지 않는다 — NF3002)
     async function errorText(res) {
-      if (res.status === 404) return "그런 일정이 없습니다. 목록을 새로고침합니다.";
+      if (res.status === 404) return "이미 삭제된 일정입니다. 목록을 새로 불러왔어요.";
       if (res.status === 422) {
         const body = await res.json().catch(() => null);
         const msg = body?.detail?.[0]?.msg ?? "";
-        return msg.includes("end_time") ? "종료 시각은 시작 시각보다 늦어야 합니다." : "입력값을 다시 확인해 주세요.";
+        return msg.includes("end_time") ? "종료 시각을 시작 시각보다 늦게 정해 주세요." : "입력값을 다시 확인해 주세요.";
       }
-      return "서버에서 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+      return "서버가 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.";
     }
 
     async function loadPlans() {
       const d = $("filterDate").value;
+      $("clearFilter").hidden = !d;
       try {
         const res = await fetch(API + (d ? `?visit_date=${d}` : ""));
         if (!res.ok) throw new Error();
         render(await res.json());
       } catch {
-        $("list").innerHTML = `<p class="empty">서버에 연결하지 못했습니다.<br>
-          <small>uvicorn app.main:app --reload 로 서버를 켰는지 확인하세요.</small></p>`;
+        setSummary([], 0);
+        $("list").innerHTML = `<div class="empty"><b>서버에 연결할 수 없어요</b>
+          TripPlanner 폴더에서 <code>uvicorn app.main:app --reload</code> 로 서버를 켠 뒤 새로고침하세요.</div>`;
       }
+    }
+
+    // 같은 날 일정들을 겹치지 않는 줄(lane)에 나눠 담는다. 겹치는 묶음끼리만 폭을 나눈다.
+    function layout(items) {
+      const sorted = [...items].sort((a, b) => toMin(a.start_time) - toMin(b.start_time) || toMin(a.end_time) - toMin(b.end_time));
+      const groups = [];
+      let group = null, groupEnd = -1;
+      for (const p of sorted) {
+        const s = toMin(p.start_time), e = toMin(p.end_time);
+        if (!group || s >= groupEnd) { group = { items: [], lanes: [] }; groups.push(group); groupEnd = e; }
+        groupEnd = Math.max(groupEnd, e);
+        let lane = group.lanes.findIndex((end) => end <= s);
+        if (lane === -1) { lane = group.lanes.length; group.lanes.push(e); } else group.lanes[lane] = e;
+        group.items.push({ p, lane });
+      }
+      const out = [];
+      for (const g of groups)
+        for (const { p, lane } of g.items)
+          out.push({ p, lane, lanes: g.lanes.length, clash: g.lanes.length > 1 && g.items.some((o) =>
+            o.p !== p && toMin(o.p.start_time) < toMin(p.end_time) && toMin(p.start_time) < toMin(o.p.end_time)) });
+      return out;
+    }
+
+    function setSummary(plans, clashCount) {
+      $("sumDays").textContent = new Set(plans.map((p) => p.visit_date)).size;
+      $("sumPlans").textContent = plans.length;
+      $("sumClash").textContent = clashCount;
+      $("sumClashWrap").classList.toggle("warn", clashCount > 0);
     }
 
     function render(plans) {
       plansById = Object.fromEntries(plans.map((p) => [p.plan_id, p]));
       if (!plans.length) {
-        $("list").innerHTML = `<p class="empty">저장된 일정이 없습니다.</p>`;
+        setSummary([], 0);
+        $("list").innerHTML = $("filterDate").value
+          ? `<div class="empty"><b>이 날짜에는 일정이 없어요</b>전체 보기로 돌아가거나 이 날짜에 일정을 추가해 보세요.</div>`
+          : `<div class="empty"><b>아직 저장한 일정이 없어요</b>왼쪽에서 첫 일정을 추가하면 여기에 하루 시간표로 그려져요.</div>`;
         return;
       }
       const byDay = {};
       plans.forEach((p) => (byDay[p.visit_date] ??= []).push(p));
-      $("list").innerHTML = Object.entries(byDay).map(([day, items]) => `
-        <div class="day">
-          <h3>${dayLabel(day)}</h3>
-          ${items.map((p) => `
-            <div class="plan ${overlapIds.has(p.plan_id) ? "overlap" : ""}">
-              <div class="time">${hm(p.start_time)} – ${hm(p.end_time)}</div>
-              <div class="info">
-                <b>${esc(p.place_name)}</b>
-                <small>${esc(p.city)}${p.memo ? " · " + esc(p.memo) : ""}</small>
-              </div>
-              <div class="btns">
-                <button onclick="startEdit(${p.plan_id})">수정</button>
-                <button class="danger" onclick="removePlan(${p.plan_id})">삭제</button>
-              </div>
-            </div>`).join("")}
-        </div>`).join("");
+      let clashCount = 0;
+
+      $("list").innerHTML = Object.entries(byDay).map(([day, items]) => {
+        const placed = layout(items);
+        clashCount += placed.filter((x) => x.clash).length;
+        const startH = Math.floor(Math.min(...items.map((p) => toMin(p.start_time))) / 60);
+        let endH = Math.ceil(Math.max(...items.map((p) => toMin(p.end_time))) / 60);
+        if (endH - startH < 3) endH = startH + 3;
+        const cities = [...new Set(items.map((p) => p.city))];
+        const { date, week } = dayParts(day);
+
+        const hours = Array.from({ length: endH - startH + 1 }, (_, i) =>
+          `<div class="hour" style="top:${i * HOUR_PX}px"><span>${String(startH + i).padStart(2, "0")}:00</span></div>`).join("");
+
+        const blocks = placed.map(({ p, lane, lanes, clash }) => {
+          const top = (toMin(p.start_time) - startH * 60) / 60 * HOUR_PX;
+          const h = Math.max((toMin(p.end_time) - toMin(p.start_time)) / 60 * HOUR_PX - 4, MIN_BLOCK);
+          const w = 100 / lanes;
+          const cls = ["block", clash && "clash", h < 56 && "short",
+                       p.plan_id === editingId && "editing", p.plan_id === flashId && "flash"].filter(Boolean).join(" ");
+          return `<button type="button" class="${cls}" onclick="startEdit(${p.plan_id})"
+                    style="top:${top + 2}px;height:${h}px;left:calc(${lane * w}% + ${lane ? 4 : 0}px);width:calc(${w}% - ${lanes > 1 ? 4 : 0}px)"
+                    aria-label="${esc(p.place_name)}, ${hm(p.start_time)}부터 ${hm(p.end_time)}까지${clash ? ", 시간 겹침" : ""}. 눌러서 수정">
+                    <span class="t">${hm(p.start_time)}–${hm(p.end_time)}</span>
+                    <span class="p">${esc(p.place_name)}</span>
+                    ${p.memo ? `<span class="m">${esc(p.memo)}</span>` : ""}
+                  </button>`;
+        }).join("");
+
+        return `<article class="day">
+            <div class="day-head">
+              <span class="day-date">${date}</span>
+              <span class="day-meta">${week}, <strong>${esc(cities.join(", "))}</strong>에서 일정 ${items.length}개</span>
+            </div>
+            <div class="timeline" style="height:${(endH - startH) * HOUR_PX}px">${hours}${blocks}</div>
+          </article>`;
+      }).join("");
+
+      setSummary(plans, clashCount);
+      flashId = null;
     }
 
     function startEdit(id) {
       const p = plansById[id];
       editingId = id;
       FIELDS.forEach((f) => ($(f).value = f.endsWith("_time") ? hm(p[f]) : p[f] ?? ""));
-      $("formTitle").textContent = `일정 수정 · ${p.place_name}`;
+      $("formTitle").textContent = "일정 수정";
+      $("formHint").textContent = `${p.place_name} 일정을 고치거나 삭제할 수 있어요.`;
       $("submitBtn").textContent = "수정 저장";
+      $("deleteBtn").hidden = false;
       $("cancelBtn").hidden = false;
       show("", "");
+      document.querySelectorAll(".block.editing").forEach((b) => b.classList.remove("editing"));
+      loadPlans();
+      $("place_name").focus();
     }
 
     function resetForm() {
       editingId = null;
       $("form").reset();
-      $("formTitle").textContent = "새 일정 추가";
-      $("submitBtn").textContent = "저장";
+      $("formTitle").textContent = "일정 추가";
+      $("formHint").textContent = "시간이 겹쳐도 저장되고, 겹치는 일정을 알려 드려요.";
+      $("submitBtn").textContent = "일정 저장";
+      $("deleteBtn").hidden = true;
       $("cancelBtn").hidden = true;
     }
 
     $("form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const body = Object.fromEntries(FIELDS.map((f) => [f, $(f).value.trim() || null]));
-      if (editingId) {                       // 수정할 때 좌표는 폼에 없으니 원래 값을 그대로 보낸다
-        body.lat = plansById[editingId].lat;
-        body.lon = plansById[editingId].lon;
-      }
-      const res = await fetch(editingId ? `${API}/${editingId}` : API, {
-        method: editingId ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const wasEditing = editingId;
+      if (wasEditing) { body.lat = plansById[wasEditing].lat; body.lon = plansById[wasEditing].lon; }
+      let res;
+      try {
+        res = await fetch(wasEditing ? `${API}/${wasEditing}` : API, {
+          method: wasEditing ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      } catch { show("error", "서버에 연결할 수 없어요. 서버가 켜져 있는지 확인해 주세요."); return; }
       if (!res.ok) {
         show("error", await errorText(res));
         if (res.status === 404) { resetForm(); loadPlans(); }
         return;
       }
       const { plan, overlaps } = await res.json();
-      overlapIds = overlaps.length ? new Set([plan.plan_id, ...overlaps.map((o) => o.plan_id)]) : new Set();
-      if (overlaps.length) {                 // 저장은 됐고, 겹치는 일정을 함께 알린다 (F3015)
-        show("warn", `<b>${esc(plan.place_name)}</b> 일정을 저장했습니다. 같은 날 시간이 겹치는 일정이 있습니다:<br>` +
-          overlaps.map((o) => `· ${hm(o.start_time)}–${hm(o.end_time)} ${esc(o.place_name)}`).join("<br>"));
+      const verb = wasEditing ? "수정했어요" : "저장했어요";
+      if (overlaps.length) {
+        show("warn", `<b>${esc(plan.place_name)}</b> 일정을 ${verb}. 같은 날 시간이 겹치는 일정이 있어요.
+          <ul>${overlaps.map((o) => `<li>${hm(o.start_time)}–${hm(o.end_time)} ${esc(o.place_name)}</li>`).join("")}</ul>`);
       } else {
-        show("ok", `<b>${esc(plan.place_name)}</b> 일정을 ${editingId ? "수정" : "저장"}했습니다.`);
+        show("ok", `<b>${esc(plan.place_name)}</b> 일정을 ${verb}.`);
       }
+      flashId = plan.plan_id;
       resetForm();
-      loadPlans();                           // 결과를 목록에 바로 반영 (F3016)
+      loadPlans();
     });
 
-    async function removePlan(id) {
-      const name = plansById[id]?.place_name ?? "";
-      const res = await fetch(`${API}/${id}`, { method: "DELETE" });
-      if (res.status === 204) show("ok", `<b>${esc(name)}</b> 일정을 삭제했습니다.`);
-      else show("error", await errorText(res));
-      overlapIds.delete(id);
-      if (editingId === id) resetForm();
+    $("deleteBtn").addEventListener("click", async () => {
+      const id = editingId, name = plansById[id]?.place_name ?? "";
+      let res;
+      try { res = await fetch(`${API}/${id}`, { method: "DELETE" }); }
+      catch { show("error", "서버에 연결할 수 없어요. 서버가 켜져 있는지 확인해 주세요."); return; }
+      show(res.status === 204 ? "ok" : "error",
+           res.status === 204 ? `<b>${esc(name)}</b> 일정을 삭제했어요.` : await errorText(res));
+      resetForm();
       loadPlans();
-    }
+    });
 
-    $("cancelBtn").addEventListener("click", () => { resetForm(); show("", ""); });
+    $("cancelBtn").addEventListener("click", () => { resetForm(); show("", ""); loadPlans(); });
     $("filterDate").addEventListener("change", loadPlans);
+    $("clearFilter").addEventListener("click", () => { $("filterDate").value = ""; loadPlans(); });
     loadPlans();
   </script>
 </body>
