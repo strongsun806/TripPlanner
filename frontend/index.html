@@ -1,0 +1,232 @@
+<!doctype html>
+<!-- 계획 관리 화면 (F3016 · F3018)
+     서버: uvicorn app.main:app --reload             (TripPlanner 폴더, 터미널 1)
+     화면: python -m http.server 5500 -d frontend    (TripPlanner 폴더, 터미널 2)  →  http://localhost:5500 -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TripPlanner · 내 여행 일정</title>
+  <style>
+    :root {
+      --bg: #f6f7f9; --card: #fff; --line: #e3e6eb; --text: #1d2330; --sub: #6b7385;
+      --main: #2f6fed; --main-weak: #e8effd; --warn: #b4560b; --warn-bg: #fff4e5; --danger: #c83737;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+           background: var(--bg); color: var(--text); }
+    header { background: var(--card); border-bottom: 1px solid var(--line); padding: 16px 24px;
+             display: flex; align-items: baseline; gap: 12px; }
+    header h1 { margin: 0; font-size: 20px; }
+    header span { color: var(--sub); font-size: 14px; }
+    main { max-width: 1040px; margin: 24px auto; padding: 0 16px;
+           display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+    h2 { margin: 0 0 16px; font-size: 16px; }
+    label { display: block; font-size: 13px; color: var(--sub); margin: 12px 0 4px; }
+    input, textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px;
+                      font: inherit; font-size: 14px; }
+    input::placeholder, textarea::placeholder { color: #aab0bc; }
+    input:focus, textarea:focus { outline: 2px solid var(--main-weak); border-color: var(--main); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button { font: inherit; font-size: 14px; border-radius: 8px; padding: 9px 14px; cursor: pointer;
+             border: 1px solid var(--line); background: var(--card); color: var(--text); }
+    button.primary { background: var(--main); border-color: var(--main); color: #fff; }
+    button.danger { color: var(--danger); }
+    .actions { display: flex; gap: 8px; margin-top: 16px; }
+    .actions .primary { flex: 1; }
+    .notice { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
+    .notice.warn { background: var(--warn-bg); color: var(--warn); }
+    .notice.error { background: #fdecec; color: var(--danger); }
+    .notice.ok { background: var(--main-weak); color: var(--main); }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .toolbar h2 { margin: 0; }
+    .toolbar input { width: auto; }
+    .day { margin-top: 18px; }
+    .day:first-child { margin-top: 0; }
+    .day h3 { font-size: 14px; color: var(--sub); margin: 0 0 8px; font-weight: 600; }
+    .plan { display: flex; gap: 14px; align-items: center; padding: 12px 14px; border: 1px solid var(--line);
+            border-radius: 10px; margin-bottom: 8px; }
+    .plan.overlap { border-color: #f3c48b; background: var(--warn-bg); }
+    .time { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 96px; }
+    .info { flex: 1; min-width: 0; }
+    .info b { display: block; }
+    .info small { color: var(--sub); }
+    .plan .btns { display: flex; gap: 6px; }
+    .plan .btns button { padding: 6px 10px; font-size: 13px; }
+    .empty { color: var(--sub); text-align: center; padding: 40px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>TripPlanner</h1>
+    <span>내 여행 일정</span>
+  </header>
+
+  <main>
+    <!-- 왼쪽: 저장 · 수정 폼 -->
+    <section class="card">
+      <h2 id="formTitle">새 일정 추가</h2>
+      <form id="form">
+        <label for="place_name">장소</label>
+        <input id="place_name" required maxlength="100" placeholder="예: 오사카성" />
+        <label for="city">도시</label>
+        <input id="city" required maxlength="50" placeholder="예: 오사카" />
+        <label for="visit_date">날짜</label>
+        <input id="visit_date" type="date" required />
+        <div class="row">
+          <div><label for="start_time">시작</label><input id="start_time" type="time" required /></div>
+          <div><label for="end_time">종료</label><input id="end_time" type="time" required /></div>
+        </div>
+        <label for="memo">메모 (선택)</label>
+        <textarea id="memo" rows="2" maxlength="300"></textarea>
+        <div class="actions">
+          <button class="primary" type="submit" id="submitBtn">저장</button>
+          <button type="button" id="cancelBtn" hidden>취소</button>
+        </div>
+      </form>
+      <div id="message"></div>
+    </section>
+
+    <!-- 오른쪽: 목록 -->
+    <section class="card">
+      <div class="toolbar">
+        <h2>일정 목록</h2>
+        <input id="filterDate" type="date" title="날짜로 거르기" />
+      </div>
+      <div id="list"><p class="empty">불러오는 중…</p></div>
+    </section>
+  </main>
+
+  <script>
+    const API = "http://localhost:8000/api/plans";
+    const FIELDS = ["place_name", "city", "visit_date", "start_time", "end_time", "memo"];
+    const $ = (id) => document.getElementById(id);
+    let editingId = null;          // 수정 중인 일정 번호 (없으면 새로 저장)
+    let plansById = {};            // 수정 버튼이 폼에 값을 채울 때 쓴다
+    let overlapIds = new Set();    // 방금 저장 결과에서 겹친다고 알려 준 일정
+
+    // 서버가 준 글자를 HTML 로 넣기 전에 바꾼다 (장소 이름에 < > 가 들어와도 화면이 깨지지 않게)
+    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    const hm = (t) => t.slice(0, 5);                     // "14:00:00" → "14:00"
+    const dayLabel = (d) => new Date(d + "T00:00").toLocaleDateString("ko-KR",
+      { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+
+    function show(kind, html) {
+      $("message").innerHTML = html ? `<div class="notice ${kind}">${html}</div>` : "";
+    }
+
+    // 서버 오류를 사람이 읽을 문장으로 (오류 원문 · 내부 정보는 화면에 내지 않는다 — NF3002)
+    async function errorText(res) {
+      if (res.status === 404) return "그런 일정이 없습니다. 목록을 새로고침합니다.";
+      if (res.status === 422) {
+        const body = await res.json().catch(() => null);
+        const msg = body?.detail?.[0]?.msg ?? "";
+        return msg.includes("end_time") ? "종료 시각은 시작 시각보다 늦어야 합니다." : "입력값을 다시 확인해 주세요.";
+      }
+      return "서버에서 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+    }
+
+    async function loadPlans() {
+      const d = $("filterDate").value;
+      try {
+        const res = await fetch(API + (d ? `?visit_date=${d}` : ""));
+        if (!res.ok) throw new Error();
+        render(await res.json());
+      } catch {
+        $("list").innerHTML = `<p class="empty">서버에 연결하지 못했습니다.<br>
+          <small>uvicorn app.main:app --reload 로 서버를 켰는지 확인하세요.</small></p>`;
+      }
+    }
+
+    function render(plans) {
+      plansById = Object.fromEntries(plans.map((p) => [p.plan_id, p]));
+      if (!plans.length) {
+        $("list").innerHTML = `<p class="empty">저장된 일정이 없습니다.</p>`;
+        return;
+      }
+      const byDay = {};
+      plans.forEach((p) => (byDay[p.visit_date] ??= []).push(p));
+      $("list").innerHTML = Object.entries(byDay).map(([day, items]) => `
+        <div class="day">
+          <h3>${dayLabel(day)}</h3>
+          ${items.map((p) => `
+            <div class="plan ${overlapIds.has(p.plan_id) ? "overlap" : ""}">
+              <div class="time">${hm(p.start_time)} – ${hm(p.end_time)}</div>
+              <div class="info">
+                <b>${esc(p.place_name)}</b>
+                <small>${esc(p.city)}${p.memo ? " · " + esc(p.memo) : ""}</small>
+              </div>
+              <div class="btns">
+                <button onclick="startEdit(${p.plan_id})">수정</button>
+                <button class="danger" onclick="removePlan(${p.plan_id})">삭제</button>
+              </div>
+            </div>`).join("")}
+        </div>`).join("");
+    }
+
+    function startEdit(id) {
+      const p = plansById[id];
+      editingId = id;
+      FIELDS.forEach((f) => ($(f).value = f.endsWith("_time") ? hm(p[f]) : p[f] ?? ""));
+      $("formTitle").textContent = `일정 수정 · ${p.place_name}`;
+      $("submitBtn").textContent = "수정 저장";
+      $("cancelBtn").hidden = false;
+      show("", "");
+    }
+
+    function resetForm() {
+      editingId = null;
+      $("form").reset();
+      $("formTitle").textContent = "새 일정 추가";
+      $("submitBtn").textContent = "저장";
+      $("cancelBtn").hidden = true;
+    }
+
+    $("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = Object.fromEntries(FIELDS.map((f) => [f, $(f).value.trim() || null]));
+      if (editingId) {                       // 수정할 때 좌표는 폼에 없으니 원래 값을 그대로 보낸다
+        body.lat = plansById[editingId].lat;
+        body.lon = plansById[editingId].lon;
+      }
+      const res = await fetch(editingId ? `${API}/${editingId}` : API, {
+        method: editingId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        show("error", await errorText(res));
+        if (res.status === 404) { resetForm(); loadPlans(); }
+        return;
+      }
+      const { plan, overlaps } = await res.json();
+      overlapIds = overlaps.length ? new Set([plan.plan_id, ...overlaps.map((o) => o.plan_id)]) : new Set();
+      if (overlaps.length) {                 // 저장은 됐고, 겹치는 일정을 함께 알린다 (F3015)
+        show("warn", `<b>${esc(plan.place_name)}</b> 일정을 저장했습니다. 같은 날 시간이 겹치는 일정이 있습니다:<br>` +
+          overlaps.map((o) => `· ${hm(o.start_time)}–${hm(o.end_time)} ${esc(o.place_name)}`).join("<br>"));
+      } else {
+        show("ok", `<b>${esc(plan.place_name)}</b> 일정을 ${editingId ? "수정" : "저장"}했습니다.`);
+      }
+      resetForm();
+      loadPlans();                           // 결과를 목록에 바로 반영 (F3016)
+    });
+
+    async function removePlan(id) {
+      const name = plansById[id]?.place_name ?? "";
+      const res = await fetch(`${API}/${id}`, { method: "DELETE" });
+      if (res.status === 204) show("ok", `<b>${esc(name)}</b> 일정을 삭제했습니다.`);
+      else show("error", await errorText(res));
+      overlapIds.delete(id);
+      if (editingId === id) resetForm();
+      loadPlans();
+    }
+
+    $("cancelBtn").addEventListener("click", () => { resetForm(); show("", ""); });
+    $("filterDate").addEventListener("change", loadPlans);
+    loadPlans();
+  </script>
+</body>
+</html>

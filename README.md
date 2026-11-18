@@ -11,8 +11,9 @@ AI 코어 프로젝트 3회차 (개인). 사용자가 말한 여행지 · 날짜
 | Tool 3종 구현 (F3001 ~ F3004) | ✅ 1일차 |
 | 메인 Agent (분석 → 계획 → 실행 → 판단 → 응답, LangGraph) | ⬜ |
 | Memory · 이벤트 발행 · 로깅 Agent | ⬜ |
-| 계획 저장 · 실행 로그 API (FastAPI) | ⬜ |
-| 화면 (대화 · 계획 관리) | ⬜ |
+| 계획 관리 API + 화면 (F3015 · F3016, SQLite) | ✅ 1일차 |
+| 대화 · 실행 로그 API (FastAPI) | ⬜ |
+| 화면 — 대화 · 실행 과정 표시 | ⬜ |
 | 심화 | ⬜ |
 
 ## 외부 API
@@ -27,6 +28,13 @@ AI 코어 프로젝트 3회차 (개인). 사용자가 말한 여행지 · 날짜
 
 ```
 TripPlanner/
+├─ app/              백엔드 (FastAPI)
+│  ├─ main.py        앱 · CORS · 라우터 연결
+│  ├─ schemas.py     요청 · 응답 형식 (PlanIn · PlanOut · PlanSaved)
+│  ├─ store.py       계획 저장소 (SQLite, data/trip.db)
+│  └─ api/plans.py   /api/plans 저장 · 목록 · 상세 · 수정 · 삭제
+├─ frontend/
+│  └─ index.html     계획 관리 화면
 ├─ tools.py          Tool 3종 + 등록 목록 (python tools.py 로 시험)
 ├─ api_check.py      외부 API 호출 확인용 (도메인 확정 단계)
 ├─ llm_check.py      GMS LLM 호출 · Tool 선택 확인 (기획 검증 2.7)
@@ -46,7 +54,23 @@ cp .env.example .env                   # 키 입력
 python api_check.py                    # 외부 API 호출 확인
 python tools.py                        # Tool 목록 + 정상 · 실패 시험
 python llm_check.py                    # LLM 호출 + Tool 선택 확인
+
+# 서버 + 화면 (터미널 두 개, 둘 다 TripPlanner 폴더에서)
+uvicorn app.main:app --reload          # http://localhost:8000/docs
+python -m http.server 5500 -d frontend # http://localhost:5500
 ```
+
+## 계획 관리 API
+
+| 메서드 · 경로 | 하는 일 | 성공 | 실패 |
+|---|---|---|---|
+| POST `/api/plans` | 일정 저장 | 201 `{plan, overlaps}` | 422 (종료 ≤ 시작 등) |
+| GET `/api/plans?visit_date=` | 목록 (날짜 · 시작 순) | 200 | — |
+| GET `/api/plans/{id}` | 상세 | 200 | 404 |
+| PUT `/api/plans/{id}` | 수정 | 200 `{plan, overlaps}` | 404 · 422 |
+| DELETE `/api/plans/{id}` | 삭제 | 204 | 404 |
+
+- 같은 날짜에 시간이 겹치는 일정이 있으면 **저장은 하고** `overlaps` 로 알린다. 끝과 시작이 맞닿으면(14–16 · 16–17) 겹침이 아니다.
 
 ## 참고
 - 2회차 프로젝트 [TripPilot](https://github.com/strongsun806/TripPilot) 의 여행 도메인을 이어 간다. Vector DB 는 심화 F3022 에서 재사용 예정.
