@@ -2,7 +2,7 @@
 
 준비 (.env):
     GMS_KEY=발급받은_키
-    GMS_BASE_URL=...     (선택) 기본값이 안 맞으면 GMS 사이트에 안내된 주소로 바꾼다
+    GMS_BASE_URL=...     GMS 사이트에 안내된 주소 (…/api.anthropic.com/v1)
     GMS_MODEL=...        (선택) 기본 claude-haiku-5-5
 
 실행:  python llm_check.py
@@ -20,7 +20,7 @@ from tools import catalog
 
 load_dotenv()
 KEY = os.getenv("GMS_KEY") or os.getenv("GMS_API_KEY")
-BASE_URL = os.getenv("GMS_BASE_URL", "https://gms.ssafy.io/gmsapi/api.anthropic.com/v1").rstrip("/")
+BASE_URL = (os.getenv("GMS_BASE_URL") or "").rstrip("/")   # 주소는 .env 에서만 (코드에 적지 않는다)
 MODEL = os.getenv("GMS_MODEL", "claude-haiku-5-5")
 
 
@@ -49,6 +49,8 @@ REQUESTS = [
 if __name__ == "__main__":
     if not KEY:
         raise SystemExit(".env 에 GMS_KEY 가 없습니다.")
+    if not BASE_URL:
+        raise SystemExit(".env 에 GMS_BASE_URL(GMS 사이트에 안내된 주소)을 넣어 주세요.")
     print(f"주소 {BASE_URL} · 모델 {MODEL}\n")
 
     print("① 평문 호출")

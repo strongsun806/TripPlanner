@@ -22,7 +22,7 @@ services:
         sync: false
       - key: ACCESS_CODE          # 접속 코드. 비워 두면 누구나 쓸 수 있다
         sync: false
-      - key: GMS_BASE_URL
-        value: https://gms.ssafy.io/gmsapi/api.anthropic.com/v1
+      - key: GMS_BASE_URL         # GMS 주소 — 저장소에 적지 않고 Render 화면에서 넣는다
+        sync: false
       - key: GMS_MODEL
         value: claude-haiku-5-5

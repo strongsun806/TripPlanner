@@ -6,7 +6,7 @@
 
 **🔗 배포: https://tripplanner-jpqn.onrender.com** (무료 요금제라 첫 접속은 30~50초 걸릴 수 있어요)
 
-SSAFY AI 코어 프로젝트 3회차 (개인) · 2회차 [TripPilot](https://github.com/strongsun806/TripPilot)(RAG 여행 플래너)의 도메인과 Vector DB 를 이어 쓴다.
+AI 코어 프로젝트 3회차 (개인) · 2회차 [TripPilot](https://github.com/strongsun806/TripPilot)(RAG 여행 플래너)의 도메인과 Vector DB 를 이어 쓴다.
 
 ![홈 — 출발 안내판과 이륙 장면](docs/images/4-5_home.png)
 
@@ -103,7 +103,7 @@ python rag_index.py
 
 | 키 | 받는 곳 | 쓰는 Tool |
 |---|---|---|
-| `GMS_KEY` | SSAFY GMS | 요청 분석 · 응답 작성 (Claude `claude-haiku-5-5`) |
+| `GMS_KEY` · `GMS_BASE_URL` | 교육 과정 GMS (LLM 게이트웨이) 안내 | 요청 분석 · 응답 작성 (Claude `claude-haiku-5-5`) |
 | `GEOAPIFY_KEY` | geoapify.com | `search_places` |
 | `VISUALCROSSING_KEY` | visualcrossing.com | `get_weather` |
 | `KAKAO_REST_KEY` | developers.kakao.com (REST API 키) | `search_nearby_food` |
@@ -119,7 +119,7 @@ python rag_index.py
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/strongsun806/TripPlanner)
 
 1. 위 버튼 → GitHub 로 Render 로그인 → 저장소 연결
-2. 환경 변수 채우기: `GMS_KEY` · `GEOAPIFY_KEY` · `VISUALCROSSING_KEY` · `KAKAO_REST_KEY`, 그리고 **`ACCESS_CODE`**(접속 코드)
+2. 환경 변수 채우기: `GMS_KEY` · `GMS_BASE_URL` · `GEOAPIFY_KEY` · `VISUALCROSSING_KEY` · `KAKAO_REST_KEY`, 그리고 **`ACCESS_CODE`**(접속 코드)
 3. 배포가 끝나면 `https://<서비스 이름>.onrender.com` — 화면은 `/`, API 문서는 `/docs` (현재 배포: https://tripplanner-jpqn.onrender.com)
 
 | 알아 둘 것 | |
@@ -128,7 +128,7 @@ python rag_index.py
 | 잠들기 | 무료 요금제는 15분 동안 요청이 없으면 잠들고, 다음 첫 접속이 30초쯤 걸린다 |
 | 데이터 | 무료 요금제에는 영구 디스크가 없어 저장한 일정 · 실행 로그는 재배포 · 재시작 때 비워진다 (시연용) |
 | 문서 검색 | 빌드 때 `rag_index.py` 로 색인을 만든다 |
-| GMS | 배포 서버에서 SSAFY GMS 에 닿지 않으면 LLM 이 실패하고, 화면에 원인별 안내가 뜬다 |
+| GMS | 배포 서버에서 GMS 에 닿지 않으면 LLM 이 실패하고, 화면에 원인별 안내가 뜬다 |
 
 
 ## 검증
@@ -168,7 +168,7 @@ python rag_index.py
 
 | 영역 | 사용 |
 |---|---|
-| Agent | LangGraph 1.2 (StateGraph) · LangChain · Claude (SSAFY GMS, OpenAI 호환 호출) |
+| Agent | LangGraph 1.2 (StateGraph) · LangChain · Claude (GMS 게이트웨이, OpenAI 호환 호출) |
 | 백엔드 | FastAPI · Pydantic · SQLite · Uvicorn |
 | 검색 | ChromaDB (2회차 TripPilot 색인과 같은 임베딩) |
 | 화면 | HTML · CSS · JavaScript (프레임워크 없음) · 글꼴 Y이든스트릿 · Pretendard |

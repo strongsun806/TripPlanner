@@ -21,7 +21,8 @@ def status():
     from ..main import logging_agent
     return {
         "keys": [{"name": k, "label": v,
-                  "set": bool(os.getenv(k) or (k == "GMS_KEY" and os.getenv("GMS_API_KEY")))} for k, v in KEYS.items()],
+                  "set": bool(os.getenv(k) or (k == "GMS_KEY" and os.getenv("GMS_API_KEY")))
+                         and (k != "GMS_KEY" or bool(config.GMS_BASE_URL))} for k, v in KEYS.items()],
         "settings": {"rain_threshold": config.RAIN_THRESHOLD, "walk_kmh": config.WALK_KMH, "detour": config.DETOUR,
                      "min_stay_min": config.MIN_STAY_MIN, "max_places": config.MAX_PLACES,
                      "max_replan": config.MAX_REPLAN, "default_window": config.DEFAULT_WINDOW,

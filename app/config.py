@@ -33,10 +33,12 @@ ACCESS_CODE = os.getenv("ACCESS_CODE", "").strip()
 # ── LLM (GMS) ───────────────────────────────────────────────
 GMS_KEY = os.getenv("GMS_KEY") or os.getenv("GMS_API_KEY")     # 2일차 라이브는 GMS_API_KEY — 둘 다 읽는다
 # GPT 토큰이 다 떨어져 GMS 의 Claude 로 바꿨다 (수업 공지). 모델명 · 주소 · 헤더(x-api-key) 세 가지가 바뀐다
-GMS_BASE_URL = os.getenv("GMS_BASE_URL", "https://gms.ssafy.io/gmsapi/api.anthropic.com/v1")
+# GMS 주소는 코드에 적지 않고 .env (배포는 환경 변수) 에서만 읽는다. 비어 있으면 LLM 을 부르지 않는다
+GMS_BASE_URL = (os.getenv("GMS_BASE_URL") or "").strip().rstrip("/")
 GMS_MODEL = os.getenv("GMS_MODEL", "claude-haiku-5-5")
 # 임베딩(문서 검색 F3022)은 Claude 에 없어서 OpenAI 쪽 주소를 따로 둔다. 실패하면 해시 벡터로 대체된다
-GMS_EMBED_BASE_URL = os.getenv("GMS_EMBED_BASE_URL", "https://gms.ssafy.io/gmsapi/api.openai.com/v1")
+# 따로 주지 않으면 같은 게이트웨이의 OpenAI 쪽 주소로 바꿔 쓴다
+GMS_EMBED_BASE_URL = (os.getenv("GMS_EMBED_BASE_URL") or GMS_BASE_URL.replace("api.anthropic.com", "api.openai.com")).rstrip("/")
 
 
 def gms_headers() -> dict:

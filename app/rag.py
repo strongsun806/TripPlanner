@@ -8,7 +8,7 @@
 색인과 질의의 임베딩 방식이 다르면 검색 품질이 떨어지므로, 결과에 어떤 임베딩을 썼는지 함께 돌려준다.
 
     RAG_DB_DIR   ChromaDB 폴더. 기본 TripPlanner/data/chroma
-                 2회차 폴더의 chroma_db 를 그대로 가리켜도 된다 (예: C:/Users/SSAFY/Desktop/TripPilot/chroma_db)
+                 2회차 폴더의 chroma_db 를 그대로 가리켜도 된다 (예: C:/Users/<사용자>/Desktop/TripPilot/chroma_db)
 """
 import hashlib
 import math

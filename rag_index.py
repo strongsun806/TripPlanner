@@ -5,7 +5,7 @@
     python rag_index.py --check      색인 상태와 시험 검색 한 번
 
 2회차 폴더에 이미 만든 chroma_db 가 있으면 색인을 다시 만들 필요 없이 .env 에
-    RAG_DB_DIR=C:/Users/SSAFY/Desktop/TripPilot/chroma_db
+    RAG_DB_DIR=C:/Users/<사용자>/Desktop/TripPilot/chroma_db
 를 넣으면 travel_meta 와 travel_wiki(위키백과 청크)를 함께 검색한다.
 """
 import sys

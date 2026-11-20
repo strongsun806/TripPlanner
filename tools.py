@@ -144,7 +144,7 @@ _WIKI_CACHE: dict[str, str | None] = {}
 def _wiki_fetch(host: str, title: str) -> dict | None:
     try:
         r = requests.get(f"{host}/api/rest_v1/page/summary/{title}", timeout=4,
-                         headers={"User-Agent": "TripPlanner/1.0 (SSAFY AI project)"})
+                         headers={"User-Agent": "TripPlanner/1.0 (student project)"})
         if r.ok:
             j = r.json()
             if j.get("type") == "standard" and j.get("extract"):

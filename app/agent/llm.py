@@ -83,6 +83,8 @@ def structured(schema, messages, temperature: float = 0):
 def get_llm(temperature: float = 0):
     if not config.GMS_KEY:
         raise LLMUnavailable("GMS_KEY")
+    if not config.GMS_BASE_URL:              # 주소가 없으면 키를 엉뚱한 곳(기본 OpenAI)으로 보내지 않게 멈춘다
+        raise LLMUnavailable("GMS_BASE_URL")
     from langchain_openai import ChatOpenAI
     # temperature 는 받는 모델에만 넘긴다. gpt-5 · o 계열(2일차 gpt-5.4-nano)과 claude-haiku-5-5 는
     # 'temperature is deprecated for this model' 로 400 을 낸다 (실제로 GMS 에서 확인)

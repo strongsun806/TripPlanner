@@ -9,8 +9,8 @@ from .. import config
 from . import llm, memory
 from .events import RunEmitter, Timer
 
-KEY_GUIDE = ("LLM 키(GMS_KEY)가 설정되지 않았어요. TripPlanner 폴더의 .env 에 GMS_KEY=발급받은_키 를 넣고 "
-             "서버를 다시 켜 주세요.")
+KEY_GUIDE = ("LLM 키(GMS_KEY) 또는 주소(GMS_BASE_URL)가 설정되지 않았어요. TripPlanner 폴더의 .env 에 "
+             "GMS_KEY=발급받은_키 와 GMS_BASE_URL=안내받은_주소 를 넣고 서버를 다시 켜 주세요.")
 
 
 def run_agent(message: str, session_id: str | None = None) -> dict:
