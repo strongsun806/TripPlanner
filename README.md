@@ -214,7 +214,7 @@ TripPlanner/
 
 | 이름 | 기본 | 설명 |
 |---|---|---|
-| `GMS_BASE_URL` · `GMS_MODEL` | Claude 주소 · `claude-haiku-5-5` | GPT 로 되돌리려면 `.env.example` 주석 참고 |
+| `GMS_BASE_URL` · `GMS_MODEL` | (비움 — **필수**) · `claude-haiku-5-5` | 주소는 코드에 기본값이 없다. 비어 있으면 LLM 을 부르지 않고 설정 안내. GPT 로 되돌리려면 `.env.example` 주석 참고 |
 | `AGENT_MODE` | `single` | `planner_worker` 로 바꾸면 심화 F3021 구조 |
 | `WORKER_LLM` | `1` | `0` 이면 Worker 가 LLM 없이 실패를 그대로 보고 (비교 실험) |
 | `ACCESS_CODE` | (비움) | 배포용 접속 코드. 넣으면 화면에서 코드를 입력해야 대화 · 저장을 쓴다 |
@@ -238,5 +238,5 @@ TripPlanner/
 ## 출처 · 라이선스
 
 - 장소 데이터 © OpenStreetMap contributors, Powered by Geoapify · 날씨 Visual Crossing · 식당 카카오 로컬
-- 위키백과 문서(2회차 색인)는 CC BY-SA 4.0 — 검색 결과에 출처 링크를 함께 보인다
+- 위키백과 문서(2회차 색인 · 탑승권의 장소 소개)는 CC BY-SA 4.0 — 검색 결과와 탑승권에 출처 링크를 함께 보인다
 - API 키는 `.env` 에서만 읽고 저장소에 올리지 않는다 (`.gitignore`, NF3001)
