@@ -106,7 +106,8 @@
     .legs .t { font-weight: 700; font-variant-numeric: tabular-nums; }
     .legs .p b { display: block; }
     .legs .p small { color: var(--sub); font-size: 13px; }
-    .legs .about { display: block; font-style: normal; font-size: 13px; color: var(--navy); margin-top: 2px; line-height: 1.45; }
+    .legs .about { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+                   font-style: normal; font-size: 13px; color: var(--navy); margin-top: 2px; line-height: 1.45; }
     .legs .wiki { display: inline-block; margin-top: 3px; font-size: 12px; font-weight: 700; color: var(--navy-soft);
                   text-decoration: none; border: 1px solid var(--rule); border-radius: 99px; padding: 1px 9px; }
     .legs .wiki:hover { border-color: var(--navy); }
