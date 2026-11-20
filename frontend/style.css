@@ -141,3 +141,21 @@ input, textarea, select { accent-color: var(--navy); }
 .hazard::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 5px; border-radius: inherit;
                   border-bottom-left-radius: 0; border-bottom-right-radius: 0;
                   background: repeating-linear-gradient(-45deg, var(--signal) 0 12px, var(--terminal) 12px 24px); }
+
+/* ── 접속 코드 게이트 (배포용) ── */
+.gate { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px;
+        background: radial-gradient(800px 400px at 50% 110%, rgba(255,198,41,.25), transparent 70%),
+                    linear-gradient(180deg, #0a1330, #1e3060); }
+.gate-card { width: min(420px, 100%); background: var(--paper); border-radius: 18px; padding: 30px 28px 24px; position: relative;
+             overflow: hidden; box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); }
+.gate-card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 6px;
+                     background: repeating-linear-gradient(-45deg, var(--signal) 0 12px, var(--terminal) 12px 24px); }
+.gate-tag { display: inline-block; background: var(--terminal); color: var(--signal); font-weight: 700; border-radius: 6px;
+           padding: 3px 10px; font-size: 13px; letter-spacing: .08em; }
+.gate-card h2 { margin: 12px 0 6px; font-size: 26px; letter-spacing: -.02em; }
+.gate-card p { margin: 0 0 18px; color: var(--sub); font-size: 14px; }
+.gate-card input { width: 100%; border: 2px solid var(--terminal); border-radius: 10px; padding: 12px 14px; font-size: 16px; }
+.gate-card input:focus { outline: none; box-shadow: 0 0 0 4px var(--signal-soft); }
+.gate-card button { width: 100%; margin-top: 10px; border: 0; border-radius: 10px; background: var(--signal); color: var(--terminal);
+                    font-weight: 700; font-size: 17px; padding: 12px; cursor: pointer; }
+.gate-msg { min-height: 20px; margin-top: 8px; color: var(--danger); font-size: 14px; }

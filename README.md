@@ -108,6 +108,25 @@ python rag_index.py
 
 <br>
 
+## 배포 (Render)
+
+서버 하나가 API 와 화면을 같은 주소로 보여 준다 (`app/main.py` 가 `frontend/` 를 `/` 에 붙인다). 설정은 [`render.yaml`](render.yaml).
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/strongsun806/TripPlanner)
+
+1. 위 버튼 → GitHub 로 Render 로그인 → 저장소 연결
+2. 환경 변수 채우기: `GMS_KEY` · `GEOAPIFY_KEY` · `VISUALCROSSING_KEY` · `KAKAO_REST_KEY`, 그리고 **`ACCESS_CODE`**(접속 코드)
+3. 배포가 끝나면 `https://<서비스 이름>.onrender.com` — 화면은 `/`, API 문서는 `/docs`
+
+| 알아 둘 것 | |
+|---|---|
+| 접속 코드 | `ACCESS_CODE` 를 넣으면 처음 들어올 때 '탑승 게이트'에서 코드를 입력해야 대화 · 저장을 쓸 수 있다 (키 사용량 보호). 비워 두면 누구나 쓴다 |
+| 잠들기 | 무료 요금제는 15분 동안 요청이 없으면 잠들고, 다음 첫 접속이 30초쯤 걸린다 |
+| 데이터 | 무료 요금제에는 영구 디스크가 없어 저장한 일정 · 실행 로그는 재배포 · 재시작 때 비워진다 (시연용) |
+| 문서 검색 | 빌드 때 `rag_index.py` 로 색인을 만든다 |
+| GMS | 배포 서버에서 SSAFY GMS 에 닿지 않으면 LLM 이 실패하고, 화면에 원인별 안내가 뜬다 |
+
+
 ## 검증
 
 | 명령 | 하는 일 | 결과 |
@@ -182,7 +201,7 @@ TripPlanner/
 ├─ docs/                     01 도메인 · 02 Tool · 03 요구사항 · 04 Agent 설계 · 05 구조 비교 · 06 API · 07 검증 · 08 결과
 │  ├─ images/                화면 캡처 (증빙)
 │  └─ evidence/              실제 실행 결과 (JSON · 그래프 · 체크리스트 출력)
-├─ start.bat · run_evidence.bat · serve_frontend.py
+├─ start.bat · run_evidence.bat · serve_frontend.py · render.yaml
 ├─ check_list.py · compare_modes.py · capture_evidence.py · rag_index.py · api_check.py · llm_check.py
 └─ requirements.txt · .env.example
 ```
@@ -194,6 +213,7 @@ TripPlanner/
 | `GMS_BASE_URL` · `GMS_MODEL` | Claude 주소 · `claude-haiku-5-5` | GPT 로 되돌리려면 `.env.example` 주석 참고 |
 | `AGENT_MODE` | `single` | `planner_worker` 로 바꾸면 심화 F3021 구조 |
 | `WORKER_LLM` | `1` | `0` 이면 Worker 가 LLM 없이 실패를 그대로 보고 (비교 실험) |
+| `ACCESS_CODE` | (비움) | 배포용 접속 코드. 넣으면 화면에서 코드를 입력해야 대화 · 저장을 쓴다 |
 | `LOGGING_ENABLED` | `1` | `0` 이면 로깅 Agent 를 붙이지 않음 (분리 확인) |
 | `CALENDAR_BACKEND` | `local` | `google` + `credentials.json` 이면 Google Calendar |
 | `RAG_DB_DIR` | `data/chroma` | 2회차 `chroma_db` 폴더를 가리키면 그대로 검색 |

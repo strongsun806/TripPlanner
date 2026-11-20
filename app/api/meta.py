@@ -26,6 +26,7 @@ def status():
                      "min_stay_min": config.MIN_STAY_MIN, "max_places": config.MAX_PLACES,
                      "max_replan": config.MAX_REPLAN, "default_window": config.DEFAULT_WINDOW,
                      "agent_mode": config.AGENT_MODE, "model": config.GMS_MODEL},
+        "access_required": bool(config.ACCESS_CODE),
         "logging": {"enabled": logging_agent is not None,
                     "saved": logging_agent.saved if logging_agent else 0,
                     "failed": logging_agent.failed if logging_agent else 0},

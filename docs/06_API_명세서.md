@@ -68,5 +68,6 @@
 
 | 경로 | 응답 |
 |---|---|
-| GET `/api/status` | `keys[{name, label, set}]` — 키 값은 내보내지 않음(NF3002), `settings`(판단 기준값 · 모드 · 모델), `logging{enabled, saved, failed}` |
+| GET `/api/status` | `keys[{name, label, set}]` — 키 값은 내보내지 않음(NF3002), `settings`(판단 기준값 · 모드 · 모델), `access_required`(접속 코드 필요 여부), `logging{enabled, saved, failed}` |
+| POST `/api/auth` | 배포용 접속 코드 확인 `{code}` → 200 `{ok: true}` · 401. `ACCESS_CODE` 가 있으면 나머지 `/api` 요청은 `X-Access-Code` 헤더가 맞아야 하고, 아니면 401 `ACCESS_CODE_REQUIRED` |
 | GET `/api/tools` | 등록된 Tool 명세 `[{name, kind(external · local), description, parameters}]` (F3001) |

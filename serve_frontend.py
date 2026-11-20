@@ -1,4 +1,6 @@
-"""화면 서버 (5500) — python -m http.server 와 같지만 브라우저가 옛 파일을 붙잡지 않게 캐시를 끈다.
+"""화면 서버 (5500) — 로컬 개발용. 배포에서는 FastAPI 가 화면까지 함께 보여 주므로 쓰지 않는다
+
+화면 서버 (5500) — python -m http.server 와 같지만 브라우저가 옛 파일을 붙잡지 않게 캐시를 끈다.
 
     python serve_frontend.py        →  http://localhost:5500
 """

@@ -27,6 +27,8 @@ CANDIDATE_LIMIT = 10         # 후보 Tool 에 요청할 개수
 FOOD_RADIUS_M = 700
 LOGGING_ENABLED = os.getenv("LOGGING_ENABLED", "1") != "0"   # 0 이면 로깅 Agent 를 붙이지 않는다 (분리 확인용)
 AGENT_MODE = os.getenv("AGENT_MODE", "single")               # single | planner_worker (심화 F3021)
+# 배포용 접속 코드. 비워 두면(로컬 기본) 누구나 쓰고, 넣으면 /api 요청에 X-Access-Code 헤더가 맞아야 한다
+ACCESS_CODE = os.getenv("ACCESS_CODE", "").strip()
 
 # ── LLM (GMS) ───────────────────────────────────────────────
 GMS_KEY = os.getenv("GMS_KEY") or os.getenv("GMS_API_KEY")     # 2일차 라이브는 GMS_API_KEY — 둘 다 읽는다

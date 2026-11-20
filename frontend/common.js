@@ -1,9 +1,50 @@
 // TripPlanner 공통 — API 주소, 안내판(탭 · 키 상태), 글자 처리
-// 기본은 8000. 증빙용으로 다른 포트의 서버를 볼 때만 ?api=http://localhost:8001 처럼 넘긴다 (localhost 만 허용)
+// API 주소 — 로컬(화면 5500 · 서버 8000 따로)이면 8000, 배포(서버 하나가 화면까지)면 같은 주소
+// 증빙용으로 다른 포트의 서버를 볼 때만 ?api=http://localhost:8001 처럼 넘긴다 (localhost 만 허용)
 const API_BASE = (() => {
   const q = new URLSearchParams(location.search).get("api") || "";
-  return /^http:\/\/localhost:\d{2,5}$/.test(q) ? q : "http://localhost:8000";
+  if (/^http:\/\/localhost:\d{2,5}$/.test(q)) return q;
+  return location.port === "5500" || location.protocol === "file:" ? "http://localhost:8000" : "";
 })();
+
+// ── 접속 코드 (배포용) ──
+// 서버에 ACCESS_CODE 가 있으면 /api 요청마다 X-Access-Code 를 붙인다. 틀리거나 없으면 탑승 게이트를 띄운다
+const nativeFetch = window.fetch.bind(window);
+window.fetch = async (url, opts = {}) => {
+  const u = String(url);
+  const isApi = u.startsWith(`${API_BASE}/api/`) || (!API_BASE && u.startsWith("/api/"));
+  if (isApi) {
+    const code = storage("tp_access");
+    if (code) opts = { ...opts, headers: { ...(opts.headers || {}), "X-Access-Code": code } };
+  }
+  const res = await nativeFetch(url, opts);
+  if (isApi && res.status === 401 && !u.endsWith("/api/auth")) showGate(true);
+  return res;
+};
+
+function showGate(wrong = false) {
+  if (document.getElementById("gate")) return;
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+      <form class="gate-card" id="gateForm">
+        <span class="gate-tag" aria-hidden="true">GATE</span>
+        <h2 id="gateTitle">탑승 게이트</h2>
+        <p>이 TripPlanner 는 접속 코드가 있어야 대화 · 저장을 쓸 수 있어요.${wrong && storage("tp_access") ? " 저장된 코드가 맞지 않아요." : ""}</p>
+        <input id="gateCode" type="password" autocomplete="off" placeholder="접속 코드" aria-label="접속 코드" required />
+        <button type="submit">탑승하기</button>
+        <div class="gate-msg" id="gateMsg" role="status"></div>
+      </form>
+    </div>`);
+  const input = document.getElementById("gateCode");
+  input.focus();
+  document.getElementById("gateForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const res = await nativeFetch(`${API_BASE}/api/auth`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: input.value }) });
+    if (res.ok) { storage("tp_access", input.value); location.reload(); }
+    else { document.getElementById("gateMsg").textContent = "접속 코드가 맞지 않아요."; input.select(); }
+  });
+}
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -76,6 +117,7 @@ async function loadStatus() {
   try {
     const res = await fetch(`${API_BASE}/api/status`);
     SERVER_STATUS = await res.json();
+    if (SERVER_STATUS.access_required && !storage("tp_access")) showGate();
     const short = { GMS_KEY: "LLM", GEOAPIFY_KEY: "장소", VISUALCROSSING_KEY: "날씨", KAKAO_REST_KEY: "식당" };
     document.getElementById("keys").innerHTML = SERVER_STATUS.keys.map((k) =>
       `<span class="${k.set ? "" : "off"}" title="${esc(k.label)} — ${k.set ? "키 설정됨" : ".env 에 " + k.name + " 없음"}">

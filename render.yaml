@@ -1,0 +1,28 @@
+# Render 배포 설정 (Blueprint) — 서버 하나가 API 와 화면(frontend/)을 같은 주소로 보여 준다
+# 키는 여기에 쓰지 않는다. 처음 배포할 때 Render 화면에서 sync: false 항목을 직접 채운다 (NF3001)
+services:
+  - type: web
+    name: tripplanner
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt && python rag_index.py
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/status
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: GMS_KEY
+        sync: false
+      - key: GEOAPIFY_KEY
+        sync: false
+      - key: VISUALCROSSING_KEY
+        sync: false
+      - key: KAKAO_REST_KEY
+        sync: false
+      - key: ACCESS_CODE          # 접속 코드. 비워 두면 누구나 쓸 수 있다
+        sync: false
+      - key: GMS_BASE_URL
+        value: https://gms.ssafy.io/gmsapi/api.anthropic.com/v1
+      - key: GMS_MODEL
+        value: claude-haiku-5-5
