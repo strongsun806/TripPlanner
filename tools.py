@@ -99,7 +99,7 @@ GEO_KEY_NAME = "GEOAPIFY_KEY"
 CATEGORIES = {
     "outdoor": "tourism.sights,tourism.attraction,leisure.park,natural,beach,heritage",
     "indoor": "entertainment.museum,entertainment.culture,entertainment.aquarium,entertainment.zoo,"
-              "tourism.attraction,commercial.shopping_mall",
+              "commercial.shopping_mall",
 }
 
 # 여행 일정에 넣으면 안 되는 곳 — 지도 데이터에 '사적'으로 잡혀 있어도 사람이 구경 가는 곳이 아니다
@@ -112,10 +112,18 @@ FORMER = re.compile(r"\(\d{4}\s*[~-]\s*\d{4}\)")                   # '(1887~2008
 SKIP_CATEGORY = ("healthcare", "education", "office", "service", "parking", "building.residential")
 
 
-def is_sight(name: str, categories: list[str]) -> bool:
+MINOR = ("tourism.attraction.artwork", "tourism.sights.memorial")
+
+
+def is_sight(name: str, categories: list[str], wiki: dict | None = None) -> bool:
+    """구경 갈 만한 곳인가 — 병원 · 학교 · '…터' 표석 · 옛 건물은 아니다.
+    길가 조형물 · 기념 표지는 위키백과 문서가 있을 만큼 이름난 것만 남긴다"""
     if NOT_A_SIGHT.search(name) or SITE_MARKER.search(name.strip()) or FORMER.search(name):
         return False
-    return not any(c.startswith(SKIP_CATEGORY) for c in categories or [])
+    cats = categories or []
+    if any(c.startswith(SKIP_CATEGORY) for c in cats):
+        return False
+    return bool(wiki) or not any(c.startswith(MINOR) for c in cats)
 
 
 def wiki_link(raw: dict) -> dict | None:
@@ -169,9 +177,6 @@ def wiki_summary(wiki: dict | None, name: str | None = None) -> dict | None:
             break
     _WIKI_CACHE[key] = out
     return out
-
-
-MINOR = ("tourism.attraction.artwork", "tourism.sights.memorial", "tourism.attraction.viewpoint")
 
 
 def place_score(cats: list[str], wiki: dict | None) -> int:
@@ -250,11 +255,11 @@ def search_places(destination: str, style: str = "outdoor", limit: int = 10, rad
         if not name or name in seen:          # 이름 없는 장소 · 같은 이름 중복은 뺀다
             continue
         cats = p.get("categories") or []
-        if not is_sight(name, cats):
+        wiki = wiki_link(p.get("datasource", {}).get("raw", {}))
+        if not is_sight(name, cats, wiki):
             dropped += 1
             continue
         seen.add(name)
-        wiki = wiki_link(p.get("datasource", {}).get("raw", {}))
         places.append({"place_id": p["place_id"], "name": name,
                        "lat": p["lat"], "lon": p["lon"],
                        "category": cats[0] if cats else None,
