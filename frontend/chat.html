@@ -12,7 +12,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TripPlanner · 대화</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=4" />
   <style>
     main { max-width: 1200px; margin: 0 auto; padding: 22px 24px 24px;
            display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; height: calc(100vh - 72px); }
@@ -202,7 +202,12 @@
     .examples button::before { content: "✈"; color: var(--navy-soft); font-size: 13px; }
     .composer textarea { border: 2px solid var(--terminal); }
     .composer textarea:focus { border-color: var(--navy-soft); box-shadow: 0 0 0 4px var(--signal-soft); }
-    .msg.user { background: var(--terminal); }
+    .msg.user { background: var(--terminal); box-shadow: 0 6px 16px -10px rgba(18,27,48,.6); }
+    .msg.bot .text { background: #f3f6fa; border: 1px solid #e5eaf1; }
+    .msg.bot .text b { color: var(--terminal); }
+    .chat, .trace { box-shadow: 0 14px 34px -22px rgba(18,27,48,.45); }
+    .pass { filter: drop-shadow(0 8px 18px rgba(28,44,76,.22)); }
+    .pass-brand { background: var(--terminal); }
   </style>
 </head>
 <body>
@@ -237,7 +242,7 @@
     </aside>
   </main>
 
-  <script src="common.js?v=3"></script>
+  <script src="common.js?v=4"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const EXAMPLES = [

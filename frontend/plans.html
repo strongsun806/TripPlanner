@@ -11,7 +11,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TripPlanner · 내 일정</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=4" />
   <style>
     :root { --hour: 64px; }
     .summary { display: flex; gap: 22px; }
@@ -37,7 +37,8 @@
     input::placeholder, textarea::placeholder { color: #a3acbd; }
     input:focus, textarea:focus { outline: none; border-color: var(--navy); }
     textarea { resize: vertical; min-height: 64px; }
-    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+    .pair input { min-width: 0; }
     .actions { display: flex; gap: 8px; margin-top: 20px; }
     .actions .btn.primary { flex: 1; }
 
@@ -95,13 +96,48 @@
 
     .empty { background: var(--paper); border-radius: 14px; padding: 48px 24px; text-align: center; color: var(--sub); }
     .empty b { display: block; color: var(--navy); font-size: 17px; margin-bottom: 4px; }
+
+    /* ── 다듬기: 탑승권 같은 일정 블록 ── */
+    .panel { padding-top: 28px; box-shadow: 0 10px 30px -18px rgba(18,27,48,.35); }
+    .panel h2 { font-size: 20px; }
+    input, textarea { border-width: 2px; background: #fbfcfd; }
+    input:focus, textarea:focus { border-color: var(--terminal); box-shadow: 0 0 0 4px var(--signal-soft); }
+    .day-head { border-bottom: 0; align-items: center; padding: 0 0 12px; }
+    .day-date { font-size: 34px; }
+    .day-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .day-meta .pill { background: var(--terminal); color: #fff; border-radius: 99px; padding: 3px 12px; font-size: 13px; font-weight: 700; }
+    .day-meta .pill.city { background: var(--signal); color: var(--terminal); }
+    .day { background: var(--paper); border-radius: 16px; padding: 20px 22px 24px; box-shadow: 0 10px 30px -20px rgba(18,27,48,.35); }
+    .timeline { margin-top: 8px; }
+    .hour { border-top: 1px dashed #dfe4ec; }
+    .hour span { background: var(--paper); }
+    .block { border-radius: 12px; background: #f7f9fc; padding-left: 18px;
+             box-shadow: inset 6px 0 0 var(--terminal), 0 1px 0 #e3e8f0; }
+    .block::after { content: ""; position: absolute; right: 12px; top: 50%; width: 10px; height: 10px; border-radius: 50%;
+                    transform: translateY(-50%); background: var(--fog); box-shadow: inset 0 0 0 2px #dfe4ec; }
+    .block:hover { box-shadow: inset 6px 0 0 var(--terminal), 0 0 0 2px var(--terminal); background: #fff; }
+    .block .t { display: inline-block; align-self: flex-start; background: var(--terminal); color: #fff; border-radius: 6px;
+                padding: 1px 8px; font-size: 13px; }
+    .block.clash { background: #fff6d6; box-shadow: inset 6px 0 0 var(--signal), 0 1px 0 #f1dd9a; }
+    .block.clash .t { background: var(--signal); color: var(--terminal); }
+    .empty { box-shadow: 0 10px 30px -20px rgba(18,27,48,.35); }
   </style>
 </head>
 <body>
   <header id="board" data-page="plans"></header>
+  <section class="page-head">
+    <div class="page-head-inner">
+      <div><h1>내 일정</h1><p>저장한 여행 일정을 하루 시간표로 봐요. 블록을 누르면 고치거나 지울 수 있고, 시간이 겹치면 노랗게 표시돼요.</p></div>
+      <div class="stats" aria-live="polite">
+        <div><b id="sumDays">0</b><span>여행 날짜</span></div>
+        <div><b id="sumPlans">0</b><span>일정</span></div>
+        <div id="sumClashWrap"><b id="sumClash">0</b><span>시간 겹침</span></div>
+      </div>
+    </div>
+  </section>
 
   <main>
-    <section class="panel" aria-labelledby="formTitle">
+    <section class="panel hazard" aria-labelledby="formTitle">
       <h2 id="formTitle">일정 추가</h2>
       <p class="hint" id="formHint">시간이 겹쳐도 저장되고, 겹치는 일정을 알려 드려요.</p>
       <form id="form">
@@ -153,13 +189,9 @@
     </section>
   </main>
 
-  <script src="common.js?v=3"></script>
+  <script src="common.js?v=4"></script>
   <script>
     renderBoard();
-    document.getElementById("boardExtra").innerHTML = `<div class="summary" aria-live="polite">
-        <div><b id="sumDays">0</b><span>여행 날짜</span></div>
-        <div><b id="sumPlans">0</b><span>일정</span></div>
-        <div id="sumClashWrap"><b id="sumClash">0</b><span>시간 겹침</span></div></div>`;
     const API = `${API_BASE}/api/plans`;
     const FIELDS = ["place_name", "city", "visit_date", "start_time", "end_time", "memo"];
     const $ = (id) => document.getElementById(id);
@@ -275,7 +307,7 @@
         return `<article class="day">
             <div class="day-head">
               <span class="day-date">${date}</span>
-              <span class="day-meta">${week}, <strong>${esc(cities.join(", "))}</strong>에서 일정 ${items.length}개</span>
+              <span class="day-meta"><span class="pill city">${esc(cities.join(" · "))}</span><span class="pill">${week}</span><span>일정 ${items.length}개</span></span>
             </div>
             <div class="timeline" style="height:${(endH - startH) * HOUR_PX}px">${hours}${blocks}</div>
           </article>`;

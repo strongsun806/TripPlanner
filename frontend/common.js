@@ -1,5 +1,9 @@
 // TripPlanner 공통 — API 주소, 안내판(탭 · 키 상태), 글자 처리
-const API_BASE = "http://localhost:8000";
+// 기본은 8000. 증빙용으로 다른 포트의 서버를 볼 때만 ?api=http://localhost:8001 처럼 넘긴다 (localhost 만 허용)
+const API_BASE = (() => {
+  const q = new URLSearchParams(location.search).get("api") || "";
+  return /^http:\/\/localhost:\d{2,5}$/.test(q) ? q : "http://localhost:8000";
+})();
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);

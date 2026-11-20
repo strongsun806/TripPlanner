@@ -116,3 +116,28 @@ body > main { position: relative; z-index: 1; }
   36%       { transform: translate(115vw, calc(var(--rise) * -1)) rotate(-6deg); }
   100%      { transform: translate(115vw, calc(var(--rise) * -1)) rotate(-6deg); }   /* 화면 밖에서 쉬었다가 다시 */
 }
+
+/* ── 화면 머리: 안내판 아래 이어지는 어두운 띠. 아래 가장자리에 활주로 등이 줄지어 있다 ── */
+.page-head { position: relative; z-index: 1; color: #fff; overflow: hidden;
+             background: linear-gradient(180deg, #16234a 0%, #1e3060 100%); }
+.page-head::after { content: ""; position: absolute; left: 0; right: 0; bottom: 10px; height: 6px;
+                    background: radial-gradient(circle, #ffd56b 0 2.5px, transparent 3px) 0 0 / 44px 6px repeat-x;
+                    opacity: .8; animation: runway-lights 2.4s linear infinite; }
+@keyframes runway-lights { to { background-position: 44px 0; } }
+.page-head-inner { max-width: 1200px; margin: 0 auto; padding: 30px 24px 38px; display: flex; align-items: flex-end;
+                   justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.page-head h1 { margin: 0; font-size: clamp(28px, 3.6vw, 40px); letter-spacing: -.03em; line-height: 1.1; }
+.page-head p { margin: 8px 0 0; color: #b9c5e0; max-width: 56ch; }
+.stats { display: flex; gap: 10px; }
+.stats div { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); border-radius: 12px;
+             padding: 10px 16px; min-width: 96px; }
+.stats b { display: block; font-size: 28px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stats span { font-size: 12px; color: #b9c5e0; }
+.stats .warn b { color: var(--signal); }
+
+/* 입력칸 공통 */
+input, textarea, select { accent-color: var(--navy); }
+.hazard { position: relative; }
+.hazard::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 5px; border-radius: inherit;
+                  border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+                  background: repeating-linear-gradient(-45deg, var(--signal) 0 12px, var(--terminal) 12px 24px); }

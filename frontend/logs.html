@@ -8,7 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TripPlanner · 실행 로그</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=4" />
   <style>
     main { max-width: 1200px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 320px minmax(0, 1fr);
            gap: 24px; align-items: start; }
@@ -41,10 +41,43 @@
     tr.replan td { background: var(--signal-soft); }
     tr.fail td { background: #fdf3f2; }
     td pre { margin: 0; white-space: pre-wrap; word-break: break-all; font-family: inherit; color: var(--sub); }
+
+    /* ── 다듬기: 관제탑 기록부 ── */
+    .session { position: relative; padding-left: 40px; box-shadow: 0 6px 18px -14px rgba(18,27,48,.4); }
+    .session::before { content: "✈"; position: absolute; left: 14px; top: 13px; color: var(--navy-soft); font-size: 14px; }
+    .session[aria-current="true"] { background: var(--terminal); border-color: var(--terminal); color: #fff; }
+    .session[aria-current="true"] b { color: var(--signal); }
+    .session[aria-current="true"] span { color: #b9c5e0; }
+    .session[aria-current="true"]::before { color: var(--signal); }
+    .run { box-shadow: 0 10px 30px -20px rgba(18,27,48,.4); }
+    .run-head { background: var(--terminal); color: #fff; border-bottom: 0; }
+    .run-head b { font-size: 16px; }
+    .run-head span { color: #b9c5e0; }
+    .eval { background: #f5f7fb; }
+    th { position: sticky; top: 0; background: var(--paper); z-index: 1; }
+    tbody tr:nth-child(even) td { background: #fafbfd; }
+    .tp { display: inline-block; border-radius: 6px; padding: 1px 8px; font-size: 12px; font-weight: 700; white-space: nowrap;
+          background: #e8ecf3; color: var(--sub); }
+    .tp.run_start, .tp.run_end { background: var(--terminal); color: #fff; }
+    .tp.llm_call { background: #e7e3fb; color: #4b3aa8; }
+    .tp.tool_call, .tp.tool_result { background: #e1ecfb; color: #1f4f9a; }
+    .tp.tool_cache_hit { background: #e3f3ec; color: var(--ok); }
+    .tp.decision { background: var(--signal-soft); color: var(--signal-ink); }
+    .tp.error { background: var(--danger-soft); color: var(--danger); }
   </style>
 </head>
 <body>
   <header id="board" data-page="logs"></header>
+  <section class="page-head">
+    <div class="page-head-inner">
+      <div><h1>실행 로그</h1><p>로깅 Agent 가 요청마다 남긴 기록이에요. 단계 · Tool 호출 · 판단을 실행 순서대로 보고, 규칙 판정과 LLM 진단을 따로 확인해요.</p></div>
+      <div class="stats" aria-live="polite">
+        <div><b id="sSessions">–</b><span>세션</span></div>
+        <div><b id="sRuns">–</b><span>요청</span></div>
+        <div><b id="sEvents">–</b><span>이벤트</span></div>
+      </div>
+    </div>
+  </section>
   <main>
     <section aria-labelledby="sessTitle">
       <h2 id="sessTitle">세션</h2>
@@ -59,7 +92,7 @@
     </section>
   </main>
 
-  <script src="common.js?v=3"></script>
+  <script src="common.js?v=4"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     let current = null;
@@ -77,6 +110,9 @@
           $("sessions").innerHTML = `<div class="empty"><b>아직 로그가 없어요</b>대화 화면에서 요청을 보내면 여기에 쌓여요.</div>`;
           return;
         }
+        $("sSessions").textContent = list.length;
+        $("sRuns").textContent = list.reduce((a, s) => a + s.runs, 0);
+        $("sEvents").textContent = list.reduce((a, s) => a + s.events, 0);
         $("sessions").innerHTML = list.map((s) => `
           <button class="session" type="button" data-id="${esc(s.session_id)}" ${s.session_id === current ? 'aria-current="true"' : ""}>
             <b>${esc(s.first_message ?? s.session_id)}</b>
@@ -131,7 +167,7 @@
       const cls = e.type === "decision" && ["replan", "replan_cap"].includes(d.kind) ? "replan"
                 : (e.type === "tool_result" && !d.ok) || e.type === "error" ? "fail" : "";
       return `<tr class="${cls}"><td class="n">${e.seq}</td><td class="t">${esc(e.ts.slice(11, 23))}</td>
-        <td>${TYPE[e.type] ?? esc(e.type)}</td><td>${esc(e.node ?? "")}</td><td>${summary(e)}</td></tr>`;
+        <td><span class="tp ${esc(e.type)}">${TYPE[e.type] ?? esc(e.type)}</span></td><td>${esc(e.node ?? "")}</td><td>${summary(e)}</td></tr>`;
     }
 
     function summary(e) {

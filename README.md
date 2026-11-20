@@ -118,3 +118,10 @@ TripPlanner/
 
 - 위키백과 문서(2회차 색인)는 CC BY-SA 4.0. 검색 결과에 출처 링크를 함께 보인다.
 - 장소 데이터 © OpenStreetMap contributors, Powered by Geoapify. 날씨 Visual Crossing. 식당 카카오 로컬.
+
+## 실행 · 검증 바로가기 (Windows)
+
+| 파일 | 하는 일 |
+|---|---|
+| `start.bat` | 서버(8000) · 화면(5500, 캐시 끈 `serve_frontend.py`) 을 켜고 브라우저로 홈을 연다 |
+| `run_evidence.bat` | 실제 LLM 으로 대표 요청을 보내 화면 캡처(`docs/images`) · 결과(`docs/evidence`) · `check_list.py` 를 한 번에 |

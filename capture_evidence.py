@@ -107,8 +107,8 @@ def main():
                                              "session_id": b["session_id"], "reply": b.get("reply")})
 
     # 캘린더 약속 (F3023) — 그날 15~16시를 비워 두고 짜는지 대화 화면에서 본다
-    client.post("/api/calendar", json={"title": "친구와 커피", "event_date": visit,
-                                       "start_time": "15:00", "end_time": "16:00"})
+    ev = client.post("/api/calendar", json={"title": "친구와 커피", "event_date": visit,
+                                            "start_time": "15:00", "end_time": "16:00"}).json()
 
     # 계획 저장 · 겹침 (F3015) — 대화 카드의 '이 일정 저장'과 같은 요청
     saved, clashes = [], []
@@ -125,6 +125,7 @@ def main():
                                             "start_time": it[0]["start_time"], "end_time": it[0]["end_time"],
                                             "memo": "겹침 확인용"})
         clashes = r.json().get("overlaps", [])
+        saved.append(r.json()["plan"])
     save_json("plans_saved.json", {"saved": saved, "overlap_alert": clashes,
                                    "list": client.get("/api/plans").json()})
     log(f"  일정 저장 {len(saved)}건 · 겹침 알림 {len(clashes)}건")
@@ -151,6 +152,32 @@ def main():
         shot(f"{UI}/logs.html?session={quote(pick['session_id'])}", "4-3_logs.png", 1440, 1600, 8000)
         save_json("log_session.json", client.get(f"/api/logs/{pick['session_id']}").json())
     shot(f"{API}/docs", "4-5_api_docs.png", 1440, 1500, 8000)
+
+    # 키 누락 안내 · Tool 하나 실패해도 진행 (F3019 · S4)
+    # 카카오 키만 비운 서버를 8001 에 따로 띄운다 (.env 는 건드리지 않음, 로그 DB 도 임시 파일)
+    log("\n[2-1] 카카오 키를 비운 서버(8001)로 키 누락 · Tool 실패 화면")
+    tmpdb = Path(tempfile.mkdtemp(prefix="tp_db_")) / "trip.db"
+    env = dict(os.environ, KAKAO_REST_KEY="", DB_PATH=str(tmpdb), PYTHONIOENCODING="utf-8")
+    srv = subprocess.Popen([sys.executable, "-m", "uvicorn", "app.main:app", "--port", "8001"], cwd=ROOT, env=env,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(40):
+            try:
+                if httpx.get("http://localhost:8001/api/status", timeout=2).status_code == 200:
+                    break
+            except Exception:
+                time.sleep(0.5)
+        q = "이번 주말 서울 종로에서 2시부터 6시까지 돌아볼 곳, 저녁 먹을 곳도 알려줘"
+        shot(f"{UI}/chat.html?api={quote('http://localhost:8001')}&q={quote(q)}", "4-5_key_missing_tool_fail.png", 1440, 1000, 30000)
+    finally:
+        srv.terminate()
+
+    # 증빙용으로 넣은 일정 · 약속은 지운다 (원래 데이터는 그대로)
+    for pl in saved:
+        client.delete(f"/api/plans/{pl['plan_id']}")
+    if ev.get("event_id"):
+        client.delete(f"/api/calendar/{ev['event_id']}")
+    log(f"  증빙용 데이터 정리: 일정 {len(saved)}건 · 약속 1건 삭제")
 
     # 3) 텍스트 증빙
     log("\n[3] 텍스트 증빙")
