@@ -20,7 +20,7 @@ SSAFY AI 코어 프로젝트 3회차 (개인) · 2회차 [TripPilot](https://git
 | **어떻게** | LangGraph Agent 가 요청을 분석해 Tool 을 고르고, 결과를 규칙으로 판단해 안 맞으면 재계획 (최대 3회) |
 | **보여 주는 것** | 답변과 함께 **실행 과정**(단계 · Tool 호출 · 판단 · 재계획 지점)을 실행 순서대로 |
 | **남기는 것** | 로깅 서브 Agent 가 모든 이벤트를 세션별로 저장하고, 실행마다 규칙으로 이상 여부를 판정 |
-| **검증** | `check_list.py` **통과 36 · 실패 0** (미확인 2 = 화면 항목, 캡처로 확인) · 오프라인 시험 62건 통과 |
+| **검증** | `check_list.py` **통과 36 · 실패 0** (미확인 2 = 화면 항목, 캡처로 확인) · 오프라인 시험 63건 통과 |
 
 <br>
 
@@ -135,7 +135,7 @@ python rag_index.py
 
 | 명령 | 하는 일 | 결과 |
 |---|---|---|
-| `python tests/test_agent_offline.py` | 가짜 LLM · 가짜 API 로 Agent 흐름 (S · A · D · E) | 38 / 38 |
+| `python tests/test_agent_offline.py` | 가짜 LLM · 가짜 API 로 Agent 흐름 (S · A · D · E) | 39 / 39 |
 | `python tests/test_api_offline.py` | `/api/chat` · `/api/plans` · `/api/logs` 연동 | 14 / 14 |
 | `python tests/test_planner_worker_offline.py` | Planner / Worker (W1 ~ W5) | 10 / 10 |
 | `python check_list.py` | 명세서 4장 체크리스트를 코드로 → [`docs/08`](docs/08_체크리스트_결과.md) | **통과 36 · 실패 0 · 미확인 2** |

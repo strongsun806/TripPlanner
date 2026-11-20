@@ -404,10 +404,10 @@ def judge(state: State, em: RunEmitter):
         from concurrent.futures import ThreadPoolExecutor
         from tools import wiki_summary
         with ThreadPoolExecutor(max_workers=3) as ex:
-            for it, w in zip(wikis, ex.map(lambda it: wiki_summary(it["wiki"], it["name"]), wikis)):
-                if w:
-                    it["about"] = w["about"]
-                    it["wiki"] = {**it["wiki"], "url": w["url"]}
+            for it, summ in zip(wikis, ex.map(lambda it: wiki_summary(it["wiki"], it["name"]), wikis)):
+                if summ:                      # 이름이 w(날씨)와 겹치지 않게
+                    it["about"] = summ["about"]
+                    it["wiki"] = {**it["wiki"], "url": summ["url"]}
     em.emit("decision", "judge", kind="satisfied",
             reason=f'{len(itin["items"])}곳, 장소당 {itin["stay_min"]}분, 이동 {itin["travel_min"]}분 — 시간창 충족',
             weather=w["note"])

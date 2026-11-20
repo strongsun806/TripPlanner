@@ -259,6 +259,14 @@ check("E2 '예쁜 카페 위주' → 카페 · 분류 CE7", T.food_query("예쁜
       and T.food_query("맛있는 라멘") == ("라멘", "FD6"))
 check("E2 위키백과 링크", T.wiki_link({"wikipedia": "ko:흥인지문"})["url"].endswith("/wiki/흥인지문"))
 
+# E3 위키백과 문서가 있는 후보 — 소개를 붙여도 일정 판단(날씨 · 시간창)은 그대로
+import tests_wiki_patch  # noqa: E402,F401  (fakes 의 후보에 wiki 를 달고 요약은 가짜로)
+ANALYSES["e3"] = A("plan_trip", destination="서울 종로", visit_date=SAT, start_time="14:00", end_time="18:00")
+o = run_agent("e3", "sess-e3")
+items = o["result"].get("itinerary", [])
+check("E3 위키백과 소개가 붙고 일정은 정상", o["ok"] and any(i.get("about") for i in items),
+      str([(i["name"], i.get("about")) for i in items]))
+
 # S9 LLM 키 없음 → 설정 안내
 from app import config  # noqa: E402
 key, config.GMS_KEY = config.GMS_KEY, None
