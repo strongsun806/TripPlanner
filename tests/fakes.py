@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 os.environ["GMS_KEY"] = "offline-test"
 os.environ.setdefault("DB_PATH", str(ROOT / "data" / "test_offline.db"))
+if Path(os.environ["DB_PATH"]).name.startswith("test_"):    # 시험용 DB 는 매번 비우고 시작 (지난 실행의 약속이 섞이지 않게)
+    Path(os.environ["DB_PATH"]).unlink(missing_ok=True)
 
 import tools  # noqa: E402
 from app.agent import llm  # noqa: E402

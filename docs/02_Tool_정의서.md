@@ -38,12 +38,15 @@
 | 설명 (Agent 가 읽음) | 사용자가 여행지(도시 · 동네 이름)를 말했고 그곳에서 갈 만한 장소 후보가 필요할 때 부른다. 비가 와서 실내로 바꿔야 하면 style='indoor'로 다시 부른다. |
 | 외부 API | Geoapify Geocoding API → Places API (전 세계) |
 | 입력 | `destination` (string, 필수) · `style` ("outdoor" \| "indoor", 기본 outdoor) · `limit` (1~20, 기본 10) · `radius_m` (500~30000, 기본 5000 — 재계획 때 넓히거나 좁힌다) |
-| 출력 | `destination`(정식 주소), `center{lat, lon}`, `country_code`, `style`, `radius_m`, `places[{place_id, name, lat, lon, category, country_code}]` |
+| 출력 | `destination`(정식 주소), `center{lat, lon}`, `country_code`, `style`, `radius_m`, `places[{place_id, name, lat, lon, category, country_code, wiki, score}]`, `filtered_out`(거른 수) |
 | 실패 | BAD_ARGUMENT · INVALID_KEY · NOT_FOUND · NO_DATA · UPSTREAM_ERROR |
 | 다음 Tool 로 넘기는 값 | `center` 또는 `places[].lat/lon` → get_weather · search_nearby_food |
 
 - style → 카테고리: outdoor = 관광명소 · 공원 · 자연 · 해변 / indoor = 박물관 · 문화시설 · 아쿠아리움 · 쇼핑몰
-- 이름: 해외 장소는 현지어로 오므로 `name:ko` → `name:en` → `name` 순으로 고른다. 이름이 없는 장소는 뺀다.
+- 이름: 해외 장소는 현지어로 오므로 `name:ko` → `name:en` → `name` 순으로 고른다. 이름이 없는 장소 · 같은 이름은 뺀다.
+- **관광지가 아닌 곳 거르기**: 지도 데이터에 '사적'으로 잡혀 있어도 병원 · 학교 · 관공서 · 주차장, 건물이 사라진 '…터' 표석, `(1887~2008)` 처럼 지금은 없는 건물은 뺀다 (`is_sight`). 넉넉히(limit × 4, 최대 60) 받아 거른 뒤 `limit` 개를 돌려준다.
+- **위키백과로 순위 보강**: OSM 태그에 위키백과(위키데이터) 문서가 있는 곳은 이름난 곳으로 보고 앞에 둔다 (`score` 3점, 명소 · 박물관 분류 +2). 문서 링크는 `wiki` 로 넘겨 탑승권에 '위키백과에서 보기'와 요약 첫 문장(`wiki_summary`, 출처 위키백과 CC BY-SA)을 붙인다.
+- **사용자가 뺀 장소**: '병원 빼' 같은 말은 분석 단계의 `exclude` 조건이 되고, 판단 단계가 이름 · 분류로 거른다. 대화 내내 쌓여 후속 요청에도 유지된다.
 - 검색 반경: 여행지 중심 5km 에서 시작. 후보가 없으면 10 · 20km 로 넓히고, 동선이 길면 2km 로 좁힌다 (재계획).
 - 여행지 이름 → 좌표는 `geocode()` 도우미가 한다. 판단이 필요 없는 일이라 Tool 로 등록하지 않고 실행 흐름(plan 단계)이 직접 부르며, 같은 이름은 한 번만 조회한다.
 
@@ -71,6 +74,8 @@
 | 출력 | `keyword`, `places[{name, address, url, distance_m}]` (가까운 순 5곳) |
 | 실패 | BAD_ARGUMENT · INVALID_KEY · OUT_OF_REGION · NO_DATA · UPSTREAM_ERROR |
 
+- 검색어 정리: '예쁜 카페 위주'처럼 꾸밈말이 붙으면 그대로 검색해 결과가 0 이 된다 → 카페 · 커피 · 디저트는 '카페', 나머지는 꾸밈말(예쁜 · 맛있는 · 분위기 …)을 빼고 검색 (`food_query`).
+- 검색어로 없으면 카카오 **분류 검색**(카페 CE7 · 음식점 FD6)으로 한 번 더 찾는다.
 - 결과 없음: `NO_DATA` + "반경 Nm 안에 'keyword' 결과가 없습니다."
 - 식당은 일정 장소와 **위치로만** 묶는다. 영업 여부 · 가격은 확인할 수 없으므로 지어내지 않는다.
 

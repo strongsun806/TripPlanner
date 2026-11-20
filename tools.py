@@ -97,9 +97,73 @@ GEO_KEY_NAME = "GEOAPIFY_KEY"
 
 # 선호(야외 · 실내)를 Geoapify 카테고리로 바꾼다. 재계획 때 outdoor → indoor 로 바꿔 부른다
 CATEGORIES = {
-    "outdoor": "tourism.sights,leisure.park,natural,beach",
-    "indoor": "entertainment.museum,entertainment.culture,entertainment.aquarium,commercial.shopping_mall",
+    "outdoor": "tourism.sights,tourism.attraction,leisure.park,natural,beach,heritage",
+    "indoor": "entertainment.museum,entertainment.culture,entertainment.aquarium,entertainment.zoo,"
+              "tourism.attraction,commercial.shopping_mall",
 }
+
+# 여행 일정에 넣으면 안 되는 곳 — 지도 데이터에 '사적'으로 잡혀 있어도 사람이 구경 가는 곳이 아니다
+# (병원 · 학교 · 관공서 · 주차장, 건물이 사라진 '…터' 표석 등)
+NOT_A_SIGHT = re.compile(r"(병원|의원|보건소|요양|학교|대학교|유치원|어린이집|주차장|아파트|오피스텔|사무소|"
+                         r"우체국|경찰서|소방서|파출소|주민센터|은행|약국|교회|성당|hospital|clinic|school|parking)",
+                         re.IGNORECASE)
+SITE_MARKER = re.compile(r"((?<!센)터|표석|표지석|집터|옛터)$")       # '센터'는 남긴다
+FORMER = re.compile(r"\(\d{4}\s*[~-]\s*\d{4}\)")                   # '(1887~2008)' — 지금은 없는 건물
+SKIP_CATEGORY = ("healthcare", "education", "office", "service", "parking", "building.residential")
+
+
+def is_sight(name: str, categories: list[str]) -> bool:
+    if NOT_A_SIGHT.search(name) or SITE_MARKER.search(name.strip()) or FORMER.search(name):
+        return False
+    return not any(c.startswith(SKIP_CATEGORY) for c in categories or [])
+
+
+def wiki_link(raw: dict) -> dict | None:
+    """OSM 태그의 위키백과 문서 — 'ko:흥인지문' → 링크. 문서가 있는 곳은 이름난 곳이라 후보 순위를 올린다"""
+    w = raw.get("wikipedia") or raw.get("wikipedia:ko")
+    if w:
+        lang, _, title = w.partition(":") if ":" in w else ("ko", "", w)
+        title = title or w
+        return {"title": title, "url": f"https://{lang or 'ko'}.wikipedia.org/wiki/{title.replace(' ', '_')}"}
+    if raw.get("wikidata"):
+        return {"title": raw["wikidata"], "url": f"https://www.wikidata.org/wiki/{raw['wikidata']}"}
+    return None
+
+
+_WIKI_CACHE: dict[str, str | None] = {}
+
+
+def wiki_summary(wiki: dict | None) -> str | None:
+    """위키백과 요약 첫 문장 (출처: 위키백과, CC BY-SA). 못 가져오면 None — 일정은 그대로 진행한다"""
+    if not wiki or "wikipedia.org/wiki/" not in wiki.get("url", ""):
+        return None
+    url = wiki["url"]
+    if url in _WIKI_CACHE:
+        return _WIKI_CACHE[url]
+    host, title = url.split("/wiki/", 1)
+    text = None
+    try:
+        r = requests.get(f"{host}/api/rest_v1/page/summary/{title}", timeout=4,
+                         headers={"User-Agent": "TripPlanner/1.0 (SSAFY AI project)"})
+        if r.ok:
+            extract = (r.json().get("extract") or "").strip()
+            first = re.split(r"(?<=\.)\s", extract, maxsplit=1)[0] if extract else ""
+            text = (first[:117] + "…") if len(first) > 120 else (first or None)
+    except requests.RequestException:
+        text = None
+    _WIKI_CACHE[url] = text
+    return text
+
+
+def place_score(cats: list[str], wiki: dict | None) -> int:
+    """이름난 관광지일수록 높게 — 위키백과 문서 > 명소 · 박물관 분류 > 나머지"""
+    score = 3 if wiki else 0
+    if any(c.startswith(("tourism.attraction", "tourism.sights.castle", "tourism.sights.place_of_worship.temple",
+                         "entertainment.museum", "heritage")) for c in cats):
+        score += 2
+    elif any(c.startswith(("tourism.sights", "entertainment", "leisure.park")) for c in cats):
+        score += 1
+    return score
 
 def pick_name(props):
     """해외 장소는 현지어로 온다 → 한국어 · 영어 이름이 있으면 그걸 먼저 쓴다"""
@@ -152,25 +216,36 @@ def search_places(destination: str, style: str = "outdoor", limit: int = 10, rad
     lat, lon = c["lat"], c["lon"]
 
     # 2) 중심 반경 안의 후보 — 재계획 때 반경을 넓히거나 좁혀 다시 부른다
+    # 넉넉히 받아(최대 60) 관광지가 아닌 곳을 거르고, 위키백과 문서가 있는 이름난 곳을 앞에 둔다
     body, err = call_api("https://api.geoapify.com/v2/places",
                          {"categories": CATEGORIES[style], "filter": f"circle:{lon},{lat},{radius_m}",
-                          "bias": f"proximity:{lon},{lat}", "limit": limit, "lang": "ko", "apiKey": key})
+                          "bias": f"proximity:{lon},{lat}", "limit": min(limit * 4, 60), "lang": "ko", "apiKey": key})
     if err:
         return err
-    places = []
+    places, dropped, seen = [], 0, set()
     for f in body.get("features", []):
         p = f["properties"]
         name = pick_name(p)
-        if not name:                          # 이름 없는 장소는 사용자에게 보여 줄 수 없다 → 뺀다
+        if not name or name in seen:          # 이름 없는 장소 · 같은 이름 중복은 뺀다
             continue
+        cats = p.get("categories") or []
+        if not is_sight(name, cats):
+            dropped += 1
+            continue
+        seen.add(name)
+        wiki = wiki_link(p.get("datasource", {}).get("raw", {}))
         places.append({"place_id": p["place_id"], "name": name,
                        "lat": p["lat"], "lon": p["lon"],
-                       "category": (p.get("categories") or [None])[0],
-                       "country_code": p.get("country_code")})
+                       "category": cats[0] if cats else None,
+                       "country_code": p.get("country_code"),
+                       "wiki": wiki, "score": place_score(cats, wiki)})
+    places.sort(key=lambda x: -x["score"])    # 안정 정렬 — 같은 점수면 가까운 순서(bias) 그대로
+    places = places[:limit]
     if not places:
         return fail("NO_DATA", f"'{destination}' 반경 {radius_m // 1000}km 안에 {style} 후보가 없습니다.")
     return ok({"destination": c["destination"], "center": {"lat": lat, "lon": lon},
-               "country_code": c["country_code"], "style": style, "radius_m": radius_m, "places": places})
+               "country_code": c["country_code"], "style": style, "radius_m": radius_m, "places": places,
+               "filtered_out": dropped})
 
 
 # ── ③-2 판단 근거 — Visual Crossing (F3003) ──────────────────
@@ -219,6 +294,21 @@ KAKAO_KEY_NAME = "KAKAO_REST_KEY"
 def in_korea(lat, lon):
     return 33.0 <= lat <= 38.7 and 124.5 <= lon <= 131.9   # 대략의 국내 범위
 
+CAFE_WORDS = ("카페", "커피", "디저트", "베이커리", "빵집", "cafe", "coffee")
+FILLER_WORDS = ("예쁜", "이쁜", "맛있는", "분위기", "좋은", "유명한", "근처", "괜찮은", "핫한", "감성", "위주", "적당한")
+
+
+def food_query(keyword: str) -> tuple[str, str]:
+    """'예쁜 카페 위주' 같은 말을 검색어로 — (검색어, 카카오 분류 코드). 카페 → CE7, 나머지 → FD6"""
+    k = (keyword or "").strip()
+    if any(w in k.lower() for w in CAFE_WORDS):
+        return "카페", "CE7"
+    for w in FILLER_WORDS:
+        k = k.replace(w, " ")
+    k = " ".join(k.split()) or "맛집"
+    return k, "FD6"
+
+
 def search_nearby_food(lat: float, lon: float, keyword: str = "맛집", radius_m: int = 700):
     try:
         lat, lon = float(lat), float(lon)
@@ -234,15 +324,24 @@ def search_nearby_food(lat: float, lon: float, keyword: str = "맛집", radius_m
     if not key:
         return fail("INVALID_KEY", f"{KAKAO_KEY_NAME}가 없습니다.")
 
+    query, group = food_query(keyword)
+    auth = {"Authorization": f"KakaoAK {key}"}
     body, err = call_api("https://dapi.kakao.com/v2/local/search/keyword.json",
-                         {"query": keyword, "x": lon, "y": lat, "radius": radius_m,
-                          "sort": "distance", "size": 5},
-                         headers={"Authorization": f"KakaoAK {key}"})
+                         {"query": query, "x": lon, "y": lat, "radius": radius_m, "sort": "distance", "size": 5},
+                         headers=auth)
     if err:
         return err
     docs = body.get("documents", [])
+    if not docs:                               # 검색어로 없으면 분류(카페 · 음식점)로 한 번 더
+        body, err = call_api("https://dapi.kakao.com/v2/local/search/category.json",
+                             {"category_group_code": group, "x": lon, "y": lat, "radius": radius_m,
+                              "sort": "distance", "size": 5}, headers=auth)
+        if err:
+            return err
+        docs = body.get("documents", [])
     if not docs:                               # 결과 없음의 응답 형식 (F3004)
-        return fail("NO_DATA", f"반경 {radius_m}m 안에 '{keyword}' 결과가 없습니다.")
+        return fail("NO_DATA", f"반경 {radius_m}m 안에 '{query}' 결과가 없습니다.")
+    keyword = query
     return ok({"keyword": keyword, "places": [
         {"name": d["place_name"],
          "address": d.get("road_address_name") or d.get("address_name") or None,

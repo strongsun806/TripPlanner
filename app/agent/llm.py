@@ -107,6 +107,9 @@ class Conditions(BaseModel):
     outdoor_only: bool | None = Field(None, description="'무조건 야외', '실내는 싫어'처럼 실내로 바꾸면 안 되면 true")
     want_food: bool | None = Field(None, description="식당·맛집·카페도 알려 달라고 했으면 true")
     food_keyword: str | None = Field(None, description="음식 종류를 말했으면 그 말. 예: 라멘, 카페")
+    exclude: list[str] | None = Field(None, description=(
+        "빼 달라고 한 장소 이름이나 종류. 예: '병원 빼고' → ['병원'], '오사카성은 가 봤어' → ['오사카성']. "
+        "이번 요청에서 새로 뺀 것만 — 이전에 뺀 것은 코드가 계속 유지한다"))
 
 
 class Analysis(BaseModel):
@@ -135,6 +138,8 @@ ANALYZE_SYSTEM = """너는 여행 플래너의 요청 분석기다. 사용자의
 - '3시 이후' → start_time 15:00, '7시 전에 끝나야' → end_time 19:00 처럼 오후 시각은 맥락으로 판단한다.
 - '오후', '저녁'처럼 시각이 없는 말을 시각으로 바꿨다면 그 해석을 assumptions 에 적는다.
 - 이전 조건이 있을 때 '같은 날 다른 곳', '시간만 바꿔서'처럼 일부만 바꾸면 reset=false 로 하고 바뀐 것만 넣는다.
+- '병원 빼', '거긴 빼고', '○○ 말고'처럼 장소를 빼 달라고 하면 그 이름이나 종류를 changes.exclude 에 넣는다.
+- '박물관 위주', '미술관', '실내로'처럼 실내 장소를 원하면 style=indoor 다.
 - 인사, 사용법 질문, 감사 인사는 smalltalk 이다.
 - tools 에는 아래 Tool 목록을 보고 이 요청에 필요한 Tool 이름만 순서대로 넣는다 (2일차 Plan 과 같다).
 

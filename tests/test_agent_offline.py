@@ -6,6 +6,7 @@
     S1 제약을 한 번에 충족           S2 비 예보 → 실내로 재계획 (이미 받은 결과 재사용)
     S3 재계획 상한 도달               S4 Tool 하나 실패해도 진행     S5 Tool 이 필요 없는 요청
     S6 후속 요청 — 바뀐 조건만 갱신   S7 되묻기                      S8 로깅 Agent 없이도 정상 동작
+    E1 뺀 장소는 대화 내내 제외      E2 관광지 아닌 곳 거르기 · 식당 검색어 정리 · 위키백과 링크
 """
 import sys
 from datetime import date, timedelta
@@ -236,6 +237,27 @@ os.environ["KAKAO_REST_KEY"] = "kakao-secret-123"
 ev = RunEmitter("sess-d5").emit("error", None, message="401 for url https://x/?key=AAA KakaoAK kakao-secret-123")
 check("D5 이벤트 문구 키 가리기", "kakao-secret-123" not in ev["data"]["message"] and "AAA" not in ev["data"]["message"],
       ev["data"]["message"])
+
+# E1 사용자가 뺀 장소는 빼고, 후속 요청에서도 계속 뺀다
+ANALYSES["e1"] = A("plan_trip", destination="서울 종로", visit_date=SAT, start_time="14:00", end_time="18:00",
+                   exclude=["공원"])
+o = run_agent("e1", "sess-e1")
+names = [i["name"] for i in o["result"].get("itinerary", [])]
+check("E1 '공원 빼' → 공원 후보 제외 · 사유", "공원 A" not in names and
+      any("요청에 따라 제외" in e["reason"] for e in o["result"].get("excluded", [])), str(names))
+ANALYSES["e1b"] = A("plan_trip", reset=False, start_time="13:00")
+o = run_agent("e1b", "sess-e1")
+check("E1 후속 요청에도 계속 제외", "공원 A" not in [i["name"] for i in o["result"].get("itinerary", [])]
+      and o["conditions"].get("exclude") == ["공원"], str(o["conditions"].get("exclude")))
+
+# E2 관광지가 아닌 곳 거르기 · 식당 검색어 정리 (tools.py 순수 함수)
+import tools as T  # noqa: E402
+check("E2 병원 · 학교 · '…터' · 옛 건물은 후보에서 뺀다",
+      not any(T.is_sight(n, []) for n in ["이화여자대학교 동대문병원(1887~2008)", "전차 차고 터", "동대문 주차장"])
+      and all(T.is_sight(n, []) for n in ["흥인지문", "국립민속박물관", "세종문화회관 아트센터"]))
+check("E2 '예쁜 카페 위주' → 카페 · 분류 CE7", T.food_query("예쁜 카페 위주") == ("카페", "CE7")
+      and T.food_query("맛있는 라멘") == ("라멘", "FD6"))
+check("E2 위키백과 링크", T.wiki_link({"wikipedia": "ko:흥인지문"})["url"].endswith("/wiki/흥인지문"))
 
 # S9 LLM 키 없음 → 설정 안내
 from app import config  # noqa: E402

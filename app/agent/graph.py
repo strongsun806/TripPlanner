@@ -336,7 +336,19 @@ def judge(state: State, em: RunEmitter):
         return {"verdict": {"action": "respond", "reason": msg},
                 "outcome": {"status": "error", "code": code, "reason": msg}}
 
-    data = places_r["data"]
+    data = dict(places_r["data"])
+    # 사용자가 뺀 장소 (대화 내내 유지) — 판단 전에 후보에서 거른다
+    kept, dropped = J.apply_exclude(data["places"], conds.get("exclude") or [])
+    if dropped:
+        em.emit("decision", "judge", kind="exclude", reason=f'요청에 따라 {len(dropped)}곳 제외',
+                names=[d["name"] for d in dropped], words=conds.get("exclude"))
+        data["places"] = kept
+        state = {**state, "excluded": state["excluded"] + dropped}
+    if not data["places"]:
+        nxt = [r for r in config.RADIUS_STEPS if r > state["radius"]]
+        if nxt:
+            return _replan(state, em, "뺀 장소를 거르고 나니 후보가 없음",
+                           f'검색 반경 {state["radius"] // 1000}km → {nxt[0] // 1000}km', {"radius": nxt[0]})
     w = J.judge_weather(results.get("get_weather"), state["style"])
     if w["status"] == "rain":
         rained_out = [{"name": p["name"], "reason": f'비 예보(강수확률 {w["precip_prob"]:.0f}%)로 야외 제외'}
@@ -386,6 +398,15 @@ def judge(state: State, em: RunEmitter):
         return {"verdict": {"action": "respond", "reason": itin["reason"]}, "excluded": excluded,
                 "defaults": defaults, "outcome": {"status": "unsatisfied", "reason": itin["reason"], "weather": w}}
 
+    # 위키백과 문서가 있는 장소는 한 줄 소개를 붙인다 (못 가져와도 일정은 그대로)
+    wikis = [it for it in itin["items"] if it.get("wiki")]
+    if wikis:
+        from concurrent.futures import ThreadPoolExecutor
+        from tools import wiki_summary
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            for it, about in zip(wikis, ex.map(lambda it: wiki_summary(it["wiki"]), wikis)):
+                if about:
+                    it["about"] = about
     em.emit("decision", "judge", kind="satisfied",
             reason=f'{len(itin["items"])}곳, 장소당 {itin["stay_min"]}분, 이동 {itin["travel_min"]}분 — 시간창 충족',
             weather=w["note"])

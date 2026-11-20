@@ -106,6 +106,10 @@
     .legs .t { font-weight: 700; font-variant-numeric: tabular-nums; }
     .legs .p b { display: block; }
     .legs .p small { color: var(--sub); font-size: 13px; }
+    .legs .about { display: block; font-style: normal; font-size: 13px; color: var(--navy); margin-top: 2px; line-height: 1.45; }
+    .legs .wiki { display: inline-block; margin-top: 3px; font-size: 12px; font-weight: 700; color: var(--navy-soft);
+                  text-decoration: none; border: 1px solid var(--rule); border-radius: 99px; padding: 1px 9px; }
+    .legs .wiki:hover { border-color: var(--navy); }
     .stamp { position: absolute; right: 16px; top: 150px; transform: rotate(-9deg); border: 2.5px solid var(--navy-soft);
              color: var(--navy-soft); border-radius: 10px; padding: 6px 12px; text-align: center; opacity: .88;
              background: rgba(255,255,255,.75); pointer-events: none; }
@@ -381,7 +385,9 @@
         <li>
           <span class="no">${i + 1}</span>
           <span class="t">${s.start_time}</span>
-          <span class="p"><b>${esc(s.name)}</b><small>${s.stay_min}분 머무름${s.walk_to_next_min ? ` · 다음까지 도보 ${s.walk_to_next_min}분` : ""}</small></span>
+          <span class="p"><b>${esc(s.name)}</b><small>${s.stay_min}분 머무름${s.walk_to_next_min ? ` · 다음까지 도보 ${s.walk_to_next_min}분` : ""}</small>
+            ${s.about ? `<em class="about">${esc(s.about)}</em>` : ""}
+            ${s.wiki ? `<a class="wiki" href="${esc(s.wiki.url)}" target="_blank" rel="noopener">위키백과에서 보기</a>` : ""}</span>
         </li>`).join("");
       return `<div class="pass-wrap" id="${id}">
         <article class="pass" aria-label="${esc(r.destination)} ${day} 일정 탑승권">
@@ -538,6 +544,7 @@
         case "satisfied": return `<span class="badge ok">제약 충족</span>`;
         case "stop": return `<span class="badge fail">중단</span>`;
         case "respond": return "응답으로";
+        case "exclude": return `요청에 따라 제외: ${esc((d.names || []).join(", "))}`;
         case "tool_choice": return `LLM 이 고른 Tool: ${esc((d.llm_tools || []).join(" → ") || "없음")}`
             + (d.added?.length ? ` <span class="badge warn">+ ${esc(d.added.join(", "))}</span>` : "")
             + (d.dropped?.length ? ` <span class="badge fail">− ${esc(d.dropped.map((x) => x.tool).join(", "))}</span>` : "");

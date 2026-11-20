@@ -56,8 +56,9 @@ def judge_weather(weather: dict | None, style: str) -> dict:
 # ── 시간창 ───────────────────────────────────────────────────
 def free_window(start: int, end: int, busy: list[dict]) -> tuple[int, int, list[dict]]:
     """조회한 일정(busy)과 겹치는 부분을 빼고 가장 긴 빈 구간을 고른다 (심화 F3023)."""
-    cuts = sorted((max(start, to_min(b["start_time"])), min(end, to_min(b["end_time"])), b)
-                  for b in busy if to_min(b["start_time"]) < end and start < to_min(b["end_time"]))
+    cuts = sorted(((max(start, to_min(b["start_time"])), min(end, to_min(b["end_time"])), b)
+                   for b in busy if to_min(b["start_time"]) < end and start < to_min(b["end_time"])),
+                  key=lambda c: (c[0], c[1]))     # 같은 시각 약속이 둘이어도 정렬이 깨지지 않게 (dict 는 비교 불가)
     gaps, t = [], start
     for s, e, _ in cuts:
         if s > t:
@@ -69,6 +70,25 @@ def free_window(start: int, end: int, busy: list[dict]) -> tuple[int, int, list[
         return start, start, [c[2] for c in cuts]
     best = max(gaps, key=lambda g: g[1] - g[0])
     return best[0], best[1], [c[2] for c in cuts]
+
+
+# ── 사용자가 뺀 장소 ──
+KIND_WORDS = {"병원": ("병원", "의원", "hospital", "healthcare"), "학교": ("학교", "대학", "school", "education"),
+              "교회": ("교회", "성당", "church", "place_of_worship.christian"), "절": ("사", "절", "temple"),
+              "공원": ("공원", "park"), "박물관": ("박물관", "museum"), "쇼핑": ("쇼핑", "몰", "mall", "shopping")}
+
+
+def apply_exclude(places: list[dict], words: list[str]) -> tuple[list[dict], list[dict]]:
+    """'병원'처럼 종류를 말하면 이름 · 분류로, '오사카성'처럼 이름을 말하면 이름으로 거른다"""
+    if not words:
+        return places, []
+    keep, out = [], []
+    for p in places:
+        name, cat = p["name"].lower(), (p.get("category") or "").lower()
+        hit = next((w for w in words if w.lower() in name or any(
+            k.lower() in name or k.lower() in cat for k in KIND_WORDS.get(w, ()) if len(k) > 1)), None)
+        (out if hit else keep).append(p if not hit else {"name": p["name"], "reason": f"요청에 따라 제외 ('{hit}')"})
+    return keep, out
 
 
 # ── 동선 · 일정 ──────────────────────────────────────────────
@@ -105,6 +125,7 @@ def build_itinerary(center: dict, places: list[dict], start: int, end: int) -> d
             for i, p in enumerate(order[:n]):
                 leg = legs[i] if i < n - 1 else None
                 items.append({"name": p["name"], "lat": p["lat"], "lon": p["lon"], "category": p.get("category"),
+                              "wiki": p.get("wiki"),
                               "start_time": fmt(t), "end_time": fmt(t + stay), "stay_min": stay,
                               "walk_to_next_min": leg})
                 t += stay + (leg or 0)

@@ -46,6 +46,8 @@ def merge_conditions(previous: dict, changes: dict, reset: bool) -> tuple[dict, 
     for k, v in changes.items():
         if v is None:
             continue
+        if k == "exclude":                    # 뺀 장소는 쌓인다 — 한 번 빼라고 했으면 이후 요청에서도 계속 뺀다
+            v = list(dict.fromkeys((base.get("exclude") or []) + [x.strip() for x in v if x and x.strip()]))
         if base.get(k) != v:
             changed.append(k)
         base[k] = v
