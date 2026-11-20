@@ -1,8 +1,8 @@
 {
-  "session_id": "55033bffa788",
-  "run_id": "7cd7b0f082bd",
+  "session_id": "38f9ad9cf014",
+  "run_id": "e50533d6f629",
   "ok": true,
-  "reply": "**결론:** 강수확률 58%라 야외 일정을 빼고, 실내 후보 3곳으로 2026-11-28(토) 13:00~18:00 일정을 짰습니다.\n\n**추천 일정**\n- 13:00~14:35 **Gallery Kaze** (체류 95분), 다음 장소까지 도보 5분\n- 14:40~16:15 **Museum of Oriental Ceramics** (체류 95분), 다음 장소까지 도보 10분\n- 16:25~18:00 **The Kitahama Plaza** (체류 95분), 마지막 장소\n\n**판단 기준**\n- 강수확률 58%, 기준 50%를 넘어 비 예보로 판단 (날씨: 비, 부분적으로 흐림)\n- 시간창 13:00~18:00, 도보 = 직선거리 × 1.3 ÷ 4.0km/h × 60, 체류 = (시간창 − 이동 합계 15분) ÷ 장소 수 ≥ 40분\n- 그날 일정은 0건이라 시간이 비어 있습니다.\n\n**보조 정보(식당)**: 조회하지 않아 추천하지 않았습니다. 영업시간과 가격은 확인하지 못했습니다.\n\n**제외한 후보**\n- 야외 후보 3곳(明治天皇聖躅碑, 淀屋橋・大江橋 欄干の復元, 駅逓司大阪郵便役所跡): 비 예보로 제외\n- 실내 후보 중 Kusuri Doshucho Museum, 武田科学振興財団杏雨書屋, 田辺三菱製薬史料館: 더 넣으면 장소당 체류가 40분 미만이 되어 제외\n\n**재계획**: 야외 후보 → 실내 후보로 1회 변경 (상한 1회 중 1회 사용, 상한 미도달)\n\n**가정·해석**\n- \"다음 주 토요일\"을 2026-11-28로 해석\n- \"오후\"를 13:00 시작으로 해석\n- \"야외 위주\"는 선호로 보고 야외 전용 조건은 걸지 않았습니다. 비가 오지 않을 것으로 바뀌면 야외로 다시 짤 수 있습니다.",
+  "reply": "**결론:** 11/28(토)은 강수확률 58%로 기준(50%)을 넘어, 야외 대신 실내 위주로 짰습니다.\n\n**추천 일정 (13:00–18:00)**\n- **13:00–14:30** 大阪市立東洋陶磁美術館 (Museum of Oriental Ceramics, Osaka): 90분, 다음 장소까지 도보 15분\n- **14:45–16:15** くすりの道修町資料館: 90분, 다음 장소까지 도보 10분\n- **16:25–17:55** 湯木美術館 (Yuki Museum of Art, Osaka): 90분, 마지막 장소\n\n**판단 기준**\n- 강수확률 58% > 기준 50% → 야외 후보 제외\n- 시간창 13:00–18:00, 이동 합 25분, 장소당 체류 90분 (40분 이상)\n- 도보 시간 = 직선거리 × 1.3 ÷ 4.0km/h × 60\n\n**제외한 후보**\n- 야외(비 예보): Osaka City Central Public Hall, 中之島公園 木陰のテラス, 堂島公園\n- 체류 40분 미만이 되어 제외: Osaka Museum of Science and Technology, The National Museum of Art, Osaka\n- 후보 우선순위에서 밀려 제외: Nakanoshima Museum of Art, Osaka\n\n**재계획:** 1회차에 야외에서 실내 후보로 변경했습니다. 재계획 상한에는 도달하지 않았습니다.\n\n**가정 및 해석**\n- '다음 주 토요일'은 오늘(11/20 금) 기준 2026-11-28로 해석했습니다.\n- '오후'는 13:00 시작으로 해석했습니다.\n- '야외 위주'는 야외 우선으로 해석했습니다. 다만 비 예보 때문에 최종 추천은 실내만 남았습니다.\n- 영업시간과 휴관일은 확인하지 못했으니 방문 전에 직접 확인하세요.",
   "intent": "plan_trip",
   "conditions": {
     "destination": "오사카",
@@ -24,42 +24,42 @@
     ],
     "excluded": [
       {
-        "name": "明治天皇聖躅碑",
+        "name": "Osaka City Central Public Hall",
         "reason": "비 예보(강수확률 58%)로 야외 제외"
       },
       {
-        "name": "淀屋橋・大江橋 欄干の復元",
+        "name": "中之島公園 木陰のテラス",
         "reason": "비 예보(강수확률 58%)로 야외 제외"
       },
       {
-        "name": "駅逓司大阪郵便役所跡",
+        "name": "堂島公園",
         "reason": "비 예보(강수확률 58%)로 야외 제외"
       },
       {
-        "name": "Kusuri Doshucho Museum",
+        "name": "Osaka Museum of Science and Technology",
         "reason": "더 넣으면 장소당 체류가 40분 미만"
       },
       {
-        "name": "武田科学振興財団杏雨書屋",
+        "name": "The National Museum of Art, Osaka",
         "reason": "더 넣으면 장소당 체류가 40분 미만"
       },
       {
-        "name": "田辺三菱製薬史料館",
-        "reason": "더 넣으면 장소당 체류가 40분 미만"
+        "name": "Nakanoshima Museum of Art, Osaka",
+        "reason": "더 이름난 후보(위키백과 문서 · 명소)를 먼저 골라 뺌"
       }
     ],
     "defaults": [],
     "assumptions": [
-      "다음 주 토요일은 2026-11-28로 해석",
-      "'오후'는 13:00 시작으로 해석",
-      "'야외 위주'는 선호로 보고 무조건 야외 조건(outdoor_only)은 설정하지 않음",
-      "비 올 가능성이 있으면 실내로 바꿀 수 있도록 날씨를 확인"
+      "'다음 주 토요일'을 오늘(금 11/20) 기준 다음 주의 토요일인 2026-11-28로 해석 (내일 토요일인 11/21이 아님)",
+      "'오후'를 13:00 시작으로 해석",
+      "'야외 위주'는 야외 우선이지만 실내 장소를 완전히 배제하지는 않는 것으로 해석 (outdoor_only는 null)",
+      "'비 오면 곤란'은 강수 확률을 확인해 비가 예상되면 실내 대안을 고려하라는 뜻으로 해석"
     ],
     "evidence": [
       {
         "tool": "search_places",
         "ok": true,
-        "brief": "outdoor 후보 10곳 (반경 5km)"
+        "brief": "outdoor 후보 4곳 (반경 5km)"
       },
       {
         "tool": "get_weather",
@@ -98,34 +98,49 @@
     },
     "itinerary": [
       {
-        "name": "Gallery Kaze",
-        "lat": 34.6922436,
-        "lon": 135.5041317,
-        "category": "entertainment",
-        "start_time": "13:00",
-        "end_time": "14:35",
-        "stay_min": 95,
-        "walk_to_next_min": 5
-      },
-      {
         "name": "Museum of Oriental Ceramics",
         "lat": 34.693421,
         "lon": 135.505487,
         "category": "building",
-        "start_time": "14:40",
-        "end_time": "16:15",
-        "stay_min": 95,
-        "walk_to_next_min": 10
+        "wiki": {
+          "title": "Museum of Oriental Ceramics, Osaka",
+          "url": "https://en.wikipedia.org/wiki/Museum_of_Oriental_Ceramics,_Osaka"
+        },
+        "start_time": "13:00",
+        "end_time": "14:30",
+        "stay_min": 90,
+        "walk_to_next_min": 15,
+        "about": "The Museum of Oriental Ceramics, Osaka (大阪市立東洋陶磁美術館) is a Japanese art museum and regarded as one of the best ceramic…"
       },
       {
-        "name": "The Kitahama Plaza",
-        "lat": 34.6892567,
-        "lon": 135.5068812,
-        "category": "commercial",
+        "name": "Kusuri Doshucho Museum",
+        "lat": 34.6886356,
+        "lon": 135.5059954,
+        "category": "entertainment",
+        "wiki": {
+          "title": "くすりの道修町資料館",
+          "url": "https://ja.wikipedia.org/wiki/くすりの道修町資料館"
+        },
+        "start_time": "14:45",
+        "end_time": "16:15",
+        "stay_min": 90,
+        "walk_to_next_min": 10,
+        "about": "くすりの道修町資料館（くすりのどしょうまちしりょうかん）は、大阪府大阪市中央区道修町にある資料館。少彦名神社の境内に併設されている。"
+      },
+      {
+        "name": "湯木美術館",
+        "lat": 34.6875435,
+        "lon": 135.5022517,
+        "category": "entertainment",
+        "wiki": {
+          "title": "Yuki Museum of Art",
+          "url": "https://en.wikipedia.org/wiki/Yuki_Museum_of_Art"
+        },
         "start_time": "16:25",
-        "end_time": "18:00",
-        "stay_min": 95,
-        "walk_to_next_min": null
+        "end_time": "17:55",
+        "stay_min": 90,
+        "walk_to_next_min": null,
+        "about": "Yuki Museum of Art  opened in Chūō-ku, Osaka, Japan, in 1987."
       }
     ],
     "calc": {
@@ -133,9 +148,9 @@
         "13:00",
         "18:00"
       ],
-      "장소당_체류_분": 95,
-      "이동_합_분": 15,
-      "늦어도_마지막_장소를_나서는_시각": "18:00",
+      "장소당_체류_분": 90,
+      "이동_합_분": 25,
+      "늦어도_마지막_장소를_나서는_시각": "17:55",
       "식": "도보(분)=직선거리×1.3÷4.0km/h×60, 체류=(시간창−이동)÷장소수 ≥ 40분"
     },
     "city": "오사카"
@@ -144,10 +159,10 @@
   "error": null,
   "steps": [
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 1,
-      "ts": "2026-11-20T10:50:15.695",
+      "ts": "2026-11-20T14:08:05.514",
       "type": "run_start",
       "node": null,
       "data": {
@@ -156,37 +171,37 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 2,
-      "ts": "2026-11-20T10:50:16.024",
+      "ts": "2026-11-20T14:08:05.933",
       "type": "node_start",
       "node": "analyze",
       "data": {}
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 3,
-      "ts": "2026-11-20T10:50:22.164",
+      "ts": "2026-11-20T14:08:11.810",
       "type": "llm_call",
       "node": "analyze",
       "data": {
         "purpose": "요청 분석",
-        "ms": 6137
+        "ms": 5870
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 4,
-      "ts": "2026-11-20T10:50:22.170",
+      "ts": "2026-11-20T14:08:11.814",
       "type": "decision",
       "node": "analyze",
       "data": {
         "kind": "intent",
         "intent": "plan_trip",
-        "reason": "오사카 여행지에서 날짜와 시간대를 정해 야외 위주 하루 일정을 추천받으려는 요청이다.",
+        "reason": "여행지(오사카)와 날짜, 시간대, 야외 선호가 있는 하루 일정 요청이며, 비 올 때 곤란하다는 조건이 있어 날씨 확인이 필요하다.",
         "changed": [
           "destination",
           "visit_date",
@@ -200,27 +215,26 @@
           "style": "outdoor"
         },
         "assumptions": [
-          "다음 주 토요일은 2026-11-28로 해석",
-          "'오후'는 13:00 시작으로 해석",
-          "'야외 위주'는 선호로 보고 무조건 야외 조건(outdoor_only)은 설정하지 않음",
-          "비 올 가능성이 있으면 실내로 바꿀 수 있도록 날씨를 확인"
+          "'다음 주 토요일'을 오늘(금 11/20) 기준 다음 주의 토요일인 2026-11-28로 해석 (내일 토요일인 11/21이 아님)",
+          "'오후'를 13:00 시작으로 해석",
+          "'야외 위주'는 야외 우선이지만 실내 장소를 완전히 배제하지는 않는 것으로 해석 (outdoor_only는 null)",
+          "'비 오면 곤란'은 강수 확률을 확인해 비가 예상되면 실내 대안을 고려하라는 뜻으로 해석"
         ],
         "tools": [
           "search_places",
-          "get_schedule",
           "get_weather"
         ]
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 5,
-      "ts": "2026-11-20T10:50:22.183",
+      "ts": "2026-11-20T14:08:11.819",
       "type": "node_end",
       "node": "analyze",
       "data": {
-        "ms": 6154,
+        "ms": 5880,
         "summary": {
           "intent": "plan_trip",
           "clarify": false
@@ -228,19 +242,19 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 6,
-      "ts": "2026-11-20T10:50:22.184",
+      "ts": "2026-11-20T14:08:11.820",
       "type": "node_start",
       "node": "plan",
       "data": {}
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 7,
-      "ts": "2026-11-20T10:50:24.080",
+      "ts": "2026-11-20T14:08:13.183",
       "type": "tool_call",
       "node": "plan",
       "data": {
@@ -252,32 +266,31 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 8,
-      "ts": "2026-11-20T10:50:24.086",
+      "ts": "2026-11-20T14:08:13.187",
       "type": "tool_result",
       "node": "plan",
       "data": {
         "tool": "geocode",
         "ok": true,
-        "ms": 1889,
+        "ms": 1355,
         "flow": true,
         "brief": "오사카시, 일본"
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 9,
-      "ts": "2026-11-20T10:50:24.089",
+      "ts": "2026-11-20T14:08:13.191",
       "type": "decision",
       "node": "plan",
       "data": {
         "kind": "tool_choice",
         "llm_tools": [
           "search_places",
-          "get_schedule",
           "get_weather"
         ],
         "final": [
@@ -285,16 +298,18 @@
           "get_weather",
           "get_schedule"
         ],
-        "added": [],
+        "added": [
+          "get_schedule"
+        ],
         "dropped": [],
-        "reason": "LLM 선택 그대로"
+        "reason": "LLM 선택을 코드가 보정"
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 10,
-      "ts": "2026-11-20T10:50:24.094",
+      "ts": "2026-11-20T14:08:13.191",
       "type": "decision",
       "node": "plan",
       "data": {
@@ -333,14 +348,14 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 11,
-      "ts": "2026-11-20T10:50:24.098",
+      "ts": "2026-11-20T14:08:13.191",
       "type": "node_end",
       "node": "plan",
       "data": {
-        "ms": 1907,
+        "ms": 1372,
         "summary": {
           "steps": [
             "search_places",
@@ -351,19 +366,19 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 12,
-      "ts": "2026-11-20T10:50:24.104",
+      "ts": "2026-11-20T14:08:13.206",
       "type": "node_start",
       "node": "execute",
       "data": {}
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 13,
-      "ts": "2026-11-20T10:50:24.107",
+      "ts": "2026-11-20T14:08:13.211",
       "type": "tool_call",
       "node": "execute",
       "data": {
@@ -377,25 +392,25 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 14,
-      "ts": "2026-11-20T10:50:25.549",
+      "ts": "2026-11-20T14:08:14.755",
       "type": "tool_result",
       "node": "execute",
       "data": {
         "tool": "search_places",
         "ok": true,
-        "ms": 1444,
+        "ms": 1542,
         "code": null,
-        "brief": "outdoor 후보 10곳 (반경 5km)"
+        "brief": "outdoor 후보 4곳 (반경 5km)"
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 15,
-      "ts": "2026-11-20T10:50:25.558",
+      "ts": "2026-11-20T14:08:14.755",
       "type": "tool_call",
       "node": "execute",
       "data": {
@@ -408,25 +423,25 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 16,
-      "ts": "2026-11-20T10:50:26.301",
+      "ts": "2026-11-20T14:08:15.673",
       "type": "tool_result",
       "node": "execute",
       "data": {
         "tool": "get_weather",
         "ok": true,
-        "ms": 737,
+        "ms": 908,
         "code": null,
         "brief": "2026-11-28 강수확률 58%, 비, 부분적으로 흐린"
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 17,
-      "ts": "2026-11-20T10:50:26.308",
+      "ts": "2026-11-20T14:08:15.673",
       "type": "tool_call",
       "node": "execute",
       "data": {
@@ -437,10 +452,10 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 18,
-      "ts": "2026-11-20T10:50:26.312",
+      "ts": "2026-11-20T14:08:15.673",
       "type": "tool_result",
       "node": "execute",
       "data": {
@@ -452,14 +467,14 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 19,
-      "ts": "2026-11-20T10:50:26.315",
+      "ts": "2026-11-20T14:08:15.673",
       "type": "node_end",
       "node": "execute",
       "data": {
-        "ms": 2208,
+        "ms": 2476,
         "summary": {
           "results": {
             "search_places": true,
@@ -470,19 +485,19 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 20,
-      "ts": "2026-11-20T10:50:26.321",
+      "ts": "2026-11-20T14:08:15.692",
       "type": "node_start",
       "node": "judge",
       "data": {}
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 21,
-      "ts": "2026-11-20T10:50:26.321",
+      "ts": "2026-11-20T14:08:15.696",
       "type": "decision",
       "node": "judge",
       "data": {
@@ -493,10 +508,10 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 22,
-      "ts": "2026-11-20T10:50:26.321",
+      "ts": "2026-11-20T14:08:15.700",
       "type": "node_end",
       "node": "judge",
       "data": {
@@ -507,19 +522,19 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 23,
-      "ts": "2026-11-20T10:50:26.332",
+      "ts": "2026-11-20T14:08:15.704",
       "type": "node_start",
       "node": "plan",
       "data": {}
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 24,
-      "ts": "2026-11-20T10:50:26.335",
+      "ts": "2026-11-20T14:08:15.706",
       "type": "decision",
       "node": "plan",
       "data": {
@@ -558,10 +573,10 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 25,
-      "ts": "2026-11-20T10:50:26.339",
+      "ts": "2026-11-20T14:08:15.706",
       "type": "node_end",
       "node": "plan",
       "data": {
@@ -576,19 +591,19 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 26,
-      "ts": "2026-11-20T10:50:26.344",
+      "ts": "2026-11-20T14:08:15.706",
       "type": "node_start",
       "node": "execute",
       "data": {}
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 27,
-      "ts": "2026-11-20T10:50:26.347",
+      "ts": "2026-11-20T14:08:15.721",
       "type": "tool_call",
       "node": "execute",
       "data": {
@@ -602,25 +617,25 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 28,
-      "ts": "2026-11-20T10:50:27.101",
+      "ts": "2026-11-20T14:08:17.328",
       "type": "tool_result",
       "node": "execute",
       "data": {
         "tool": "search_places",
         "ok": true,
-        "ms": 750,
+        "ms": 1600,
         "code": null,
         "brief": "indoor 후보 10곳 (반경 5km)"
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 29,
-      "ts": "2026-11-20T10:50:27.107",
+      "ts": "2026-11-20T14:08:17.334",
       "type": "tool_cache_hit",
       "node": "execute",
       "data": {
@@ -635,10 +650,10 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 30,
-      "ts": "2026-11-20T10:50:27.111",
+      "ts": "2026-11-20T14:08:17.338",
       "type": "tool_cache_hit",
       "node": "execute",
       "data": {
@@ -651,14 +666,14 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 31,
-      "ts": "2026-11-20T10:50:27.115",
+      "ts": "2026-11-20T14:08:17.342",
       "type": "node_end",
       "node": "execute",
       "data": {
-        "ms": 769,
+        "ms": 1620,
         "summary": {
           "results": {
             "search_places": true,
@@ -669,84 +684,84 @@
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 32,
-      "ts": "2026-11-20T10:50:27.119",
+      "ts": "2026-11-20T14:08:17.342",
       "type": "node_start",
       "node": "judge",
       "data": {}
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 33,
-      "ts": "2026-11-20T10:50:27.121",
+      "ts": "2026-11-20T14:08:18.106",
       "type": "decision",
       "node": "judge",
       "data": {
         "kind": "satisfied",
-        "reason": "3곳, 장소당 95분, 이동 15분 — 시간창 충족",
+        "reason": "3곳, 장소당 90분, 이동 25분 — 시간창 충족",
         "weather": "강수확률 58% (기준 50%)"
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 34,
-      "ts": "2026-11-20T10:50:27.129",
+      "ts": "2026-11-20T14:08:18.108",
       "type": "node_end",
       "node": "judge",
       "data": {
-        "ms": 4,
+        "ms": 758,
         "summary": {
           "action": "respond"
         }
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 35,
-      "ts": "2026-11-20T10:50:27.134",
+      "ts": "2026-11-20T14:08:18.108",
       "type": "node_start",
       "node": "respond",
       "data": {}
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 36,
-      "ts": "2026-11-20T10:50:33.232",
+      "ts": "2026-11-20T14:08:26.219",
       "type": "llm_call",
       "node": "respond",
       "data": {
         "purpose": "응답 작성",
-        "ms": 6095
+        "ms": 8101
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 37,
-      "ts": "2026-11-20T10:50:33.237",
+      "ts": "2026-11-20T14:08:26.223",
       "type": "node_end",
       "node": "respond",
       "data": {
-        "ms": 6100,
+        "ms": 8106,
         "summary": {}
       }
     },
     {
-      "session_id": "55033bffa788",
-      "run_id": "7cd7b0f082bd",
+      "session_id": "38f9ad9cf014",
+      "run_id": "e50533d6f629",
       "seq": 38,
-      "ts": "2026-11-20T10:50:33.239",
+      "ts": "2026-11-20T14:08:26.231",
       "type": "run_end",
       "node": null,
       "data": {
         "ok": true,
-        "ms": 17542,
+        "ms": 20703,
         "replans": 1,
         "intent": "plan_trip",
         "mode": "single",
@@ -754,5 +769,5 @@
       }
     }
   ],
-  "ms": 17542
+  "ms": 20703
 }
