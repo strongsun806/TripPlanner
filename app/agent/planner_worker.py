@@ -80,6 +80,13 @@ def worker(state: State, em: RunEmitter):
                 report.append({"task": task["id"], "tool": name, "status": "done", "attempts": attempt + 1})
                 break
             code = r["error"]["code"]
+            # 필수 인자가 비어 있으면 Worker 가 지어낼 값이 아니다 → LLM 에 넘기지 않고 그대로 보고 (명세 F3021)
+            missing = [k for k in TOOLS[name].parameters.get("required", []) if args.get(k) in (None, "")]
+            if missing:
+                em.emit("decision", "worker", kind="worker_failure", tool=name, code=code, llm=False,
+                        reason=f"필수 인자 누락({', '.join(missing)}) — LLM 에 넘기지 않음")
+                report.append({"task": task["id"], "tool": name, "status": "failed", "code": code})
+                break
             if code in FATAL or code not in RETRYABLE or not config.WORKER_LLM:
                 why = "치명적 실패 — LLM 에 넘기지 않음" if code in FATAL else \
                       "Worker LLM 꺼짐 — 그대로 보고" if not config.WORKER_LLM else "인자로 고칠 수 없는 실패"

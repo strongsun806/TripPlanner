@@ -96,5 +96,38 @@ ANALYSES["w5"] = A("plan_trip", destination="서울 종로", visit_date=SAT, wan
 o = run_agent("w5", "pw-5")
 check("W5 Worker LLM 꺼짐 → 재시도 없이 보고", len(llm_calls(o, "worker")) == 0 and o["result"].get("food_error"))
 
+# W6 필수 인자 누락 → Worker 의 LLM 을 부르지 않는다 (지어낼 값이 아니다)
+import app.agent.planner_worker as PW  # noqa: E402
+_orig_steps = PW.make_steps
+
+
+def steps_without_lat(*a, **k):
+    steps, loc, why = _orig_steps(*a, **k)
+    for s_ in steps:
+        if s_["tool"] == "search_nearby_food":
+            s_["args"] = {kk: vv for kk, vv in s_["args"].items() if kk != "lat"}
+    return steps, loc, why
+
+
+PW.make_steps = steps_without_lat
+DECIDE.clear()
+ANALYSES["w6"] = A("plan_trip", destination="서울 종로", visit_date=SAT, start_time="14:00", end_time="18:00", want_food=True)
+o = run_agent("w6", "pw-6")
+miss = [e for e in kinds(o, "worker_failure") if "필수 인자 누락" in e["data"]["reason"]]
+check("W6 필수 인자 누락은 Worker LLM 0회", miss and len(llm_calls(o, "worker")) == 0 and not DECIDE,
+      miss[0]["data"]["reason"] if miss else "")
+PW.make_steps = _orig_steps
+
+# W7 로깅 Agent 규칙이 이상으로 판정하면 Planner 가 작업 목록을 다시 구성한다
+import app.evaluator as EV  # noqa: E402
+_orig_judge = EV.judge_events
+EV.judge_events = lambda events: ("anomaly", [{"code": "REPEATED_CALL", "detail": "시험용 이상 판정"}])
+ANALYSES["w7"] = A("plan_trip", destination="서울 종로", visit_date=SAT, start_time="14:00", end_time="18:00")
+o = run_agent("w7", "pw-7")
+EV.judge_events = _orig_judge
+check("W7 이상 판정 → Planner 재구성", len(kinds(o, "tasks")) >= 2 and
+      any("로깅 Agent 이상 판정" in r["reason"] for r in o["result"].get("replans", [])),
+      f'작업 목록 {len(kinds(o, "tasks"))}번')
+
 print(f"\n{sum(results)}/{len(results)} 통과")
 sys.exit(0 if all(results) else 1)

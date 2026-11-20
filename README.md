@@ -20,7 +20,7 @@ AI 코어 프로젝트 3회차 (개인) · 2회차 [TripPilot](https://github.co
 | **어떻게** | LangGraph Agent 가 요청을 분석해 Tool 을 고르고, 결과를 규칙으로 판단해 안 맞으면 재계획 (최대 3회) |
 | **보여 주는 것** | 답변과 함께 **실행 과정**(단계 · Tool 호출 · 판단 · 재계획 지점)을 실행 순서대로 |
 | **남기는 것** | 로깅 서브 Agent 가 모든 이벤트를 세션별로 저장하고, 실행마다 규칙으로 이상 여부를 판정 |
-| **검증** | `check_list.py` **통과 36 · 실패 0** (미확인 2 = 화면 항목, 캡처로 확인) · 오프라인 시험 63건 통과 |
+| **검증** | `check_list.py` **통과 36 · 실패 0** (미확인 2 = 화면 항목, 캡처로 확인) · 오프라인 시험 70건 통과 |
 
 <br>
 
@@ -137,13 +137,14 @@ python rag_index.py
 |---|---|---|
 | `python tests/test_agent_offline.py` | 가짜 LLM · 가짜 API 로 Agent 흐름 (S · A · D · E) | 39 / 39 |
 | `python tests/test_api_offline.py` | `/api/chat` · `/api/plans` · `/api/logs` 연동 | 14 / 14 |
-| `python tests/test_planner_worker_offline.py` | Planner / Worker (W1 ~ W5) | 10 / 10 |
+| `python tests/test_planner_worker_offline.py` | Planner / Worker (W1 ~ W7) | 12 / 12 |
+| `python tests/test_checklist_offline.py` | 실제 API 로 만들기 어려운 경우 — 빈 속성 판단 보류 · 로그 저장 실패 · 로그 = 이벤트 · 캘린더 교체 (G1 ~ G4) | 5 / 5 |
 | `python check_list.py` | 명세서 4장 체크리스트를 코드로 → [`docs/08`](docs/08_체크리스트_결과.md) | **통과 36 · 실패 0 · 미확인 2** |
 | `python compare_modes.py` | 대표 요청 5개 × 구성 3개를 실제 LLM 으로 → [`docs/05`](docs/05_구조_비교.md) | 15건 · 오류 0 |
 | `run_evidence.bat` | 실제 요청 → 화면 캡처(`docs/images`) · 결과(`docs/evidence`) · 체크리스트를 한 번에 | — |
 | `python tools.py` · `python llm_check.py` · `python api_check.py` | Tool 정상 · 실패 / LLM 호출 · Tool 선택 / 외부 API 확인 | — |
 
-항목별 증빙은 [`docs/07_검증_체크리스트.md`](docs/07_검증_체크리스트.md) 에 캡처와 함께 연결돼 있다.
+항목별 증빙은 [`docs/07_검증_체크리스트.md`](docs/07_검증_체크리스트.md), 대표 시나리오 기록은 [`docs/09_대표_시나리오_검증.md`](docs/09_대표_시나리오_검증.md), 셀프 체크리스트는 [`docs/10_셀프_체크리스트.xlsx`](docs/10_셀프_체크리스트.xlsx).
 
 <br>
 
@@ -234,6 +235,8 @@ TripPlanner/
 | [06 API 명세서](docs/06_API_명세서.md) | 엔드포인트 · 요청 · 응답 |
 | [07 검증 체크리스트](docs/07_검증_체크리스트.md) | 항목별 증빙 캡처 연결 |
 | [08 체크리스트 결과](docs/08_체크리스트_결과.md) | `check_list.py` 실행 결과 |
+| [09 대표 시나리오 검증](docs/09_대표_시나리오_검증.md) | 대표 요청 5개의 기대 · 실제 · 처리 시간, 기대와 다른 동작의 원인과 수정, 실행 로그 샘플 |
+| [10 셀프 체크리스트](docs/10_셀프_체크리스트.xlsx) | 셀프 체크리스트 32항목 결과 · 증빙 |
 
 ## 출처 · 라이선스
 
