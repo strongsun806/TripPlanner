@@ -324,6 +324,9 @@ CAFE_WORDS = ("카페", "커피", "디저트", "베이커리", "빵집", "cafe",
 FILLER_WORDS = ("예쁜", "이쁜", "맛있는", "분위기", "좋은", "유명한", "근처", "괜찮은", "핫한", "감성", "위주", "적당한")
 
 
+GENERIC_FOOD = ("카페", "맛집", "식당", "음식점", "밥집", "레스토랑")   # 특정 가게 이름은 분류 검색으로 바꾸지 않는다
+
+
 def food_query(keyword: str) -> tuple[str, str]:
     """'예쁜 카페 위주' 같은 말을 검색어로 — (검색어, 카카오 분류 코드). 카페 → CE7, 나머지 → FD6"""
     k = (keyword or "").strip()
@@ -358,7 +361,7 @@ def search_nearby_food(lat: float, lon: float, keyword: str = "맛집", radius_m
     if err:
         return err
     docs = body.get("documents", [])
-    if not docs:                               # 검색어로 없으면 분류(카페 · 음식점)로 한 번 더
+    if not docs and query in GENERIC_FOOD:     # '카페' · '맛집'처럼 넓은 말인데 없으면 분류(카페 · 음식점)로 한 번 더
         body, err = call_api("https://dapi.kakao.com/v2/local/search/category.json",
                              {"category_group_code": group, "x": lon, "y": lat, "radius": radius_m,
                               "sort": "distance", "size": 5}, headers=auth)
