@@ -1,0 +1,24 @@
+서버 확인: GMS_KEY=O, GEOAPIFY_KEY=O, VISUALCROSSING_KEY=O, KAKAO_REST_KEY=O · 모델 claude-haiku-5-5
+브라우저: C:\Program Files\Google\Chrome\Application\chrome.exe
+
+[1] API 대표 요청
+  chat ok=True intent=plan_trip 재계획=1  — 다음 주 토요일 오사카, 오후에 야외 위주로 돌고 싶어
+  chat ok=True intent=plan_trip 재계획=0  — 같은 날 서울 종로로 바꿔줘
+  일정 저장 3건 · 겹침 알림 2건
+
+[2] 화면 캡처
+  찍음 4-5_home.png (1s)
+  찍음 4-2_chat_osaka_replan.png (16s)
+  찍음 4-2_chat_jongno_food.png (13s)
+  찍음 4-2_chat_replan_cap.png (14s)
+  찍음 4-2_chat_smalltalk.png (5s)
+  찍음 4-6_chat_rag.png (12s)
+  찍음 4-4_plans_clash.png (1s)
+  찍음 4-3_logs.png (1s)
+  찍음 4-5_api_docs.png (1s)
+
+[3] 텍스트 증빙
+통과 36 · 실패 0 · 미확인 2
+
+끝. docs/images · docs/evidence 를 확인하세요.
+DONE

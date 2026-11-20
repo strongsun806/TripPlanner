@@ -1,0 +1,573 @@
+<!doctype html>
+<!-- 대화 화면 (F3018 · F3019)
+     서버: uvicorn app.main:app --reload             (TripPlanner 폴더, 터미널 1)
+     화면: python -m http.server 5500 -d frontend    (TripPlanner 폴더, 터미널 2)  →  http://localhost:5500/chat.html
+     홈(index.html)의 체크인 카운터에서 넘어오면 chat.html?q=… 의 요청을 바로 보낸다
+
+     왼쪽: 대화 — 답변과 함께 추천 일정 · 날씨 · 식당 · 제외 사유를 카드로 보여 주고, 일정을 바로 저장할 수 있다
+     오른쪽: 실행 과정 — 단계 · Tool 호출 · 판단을 실행 순서대로, 재계획 지점은 노랑 띠로 구분한다 -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TripPlanner · 대화</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="style.css?v=3" />
+  <style>
+    main { max-width: 1200px; margin: 0 auto; padding: 22px 24px 24px;
+           display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; height: calc(100vh - 72px); }
+    @media (max-width: 960px) { main { grid-template-columns: 1fr; height: auto; } }
+
+    /* ── 대화 ── */
+    .chat { display: flex; flex-direction: column; min-height: 0; background: var(--paper); border-radius: 16px; }
+    .chat-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px;
+                 border-bottom: 1px solid var(--rule); }
+    .chat-head h1 { margin: 0; font-size: 17px; }
+    .chat-head .cond { font-size: 13px; color: var(--sub); }
+    #banner { padding: 0 20px; }
+    #banner .notice { margin-top: 14px; }
+    .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 18px; min-height: 320px; }
+    .msg { max-width: 88%; }
+    .msg.user { align-self: flex-end; background: var(--navy); color: #fff; padding: 10px 14px; border-radius: 14px 14px 4px 14px; }
+    .msg.bot { align-self: flex-start; width: 88%; }
+    .msg.bot .text { background: var(--fog); padding: 12px 16px; border-radius: 14px 14px 14px 4px; }
+    .msg.bot .text p { margin: 0 0 6px; }
+    .msg.bot .text p:last-child { margin-bottom: 0; }
+    .msg.bot .text ul { margin: 4px 0 8px; padding-left: 20px; }
+    .msg.error .text { background: var(--danger-soft); color: var(--danger); }
+    .thinking .text { color: var(--sub); display: flex; align-items: center; gap: 10px; }
+    .dots { display: inline-flex; gap: 4px; }
+    .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--signal); animation: blink 1.2s infinite; }
+    .dots i:nth-child(2) { animation-delay: .2s; } .dots i:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+    /* 추천 카드 */
+    .card { margin-top: 10px; border: 1.5px solid var(--rule); border-radius: 12px; overflow: hidden; background: var(--paper); }
+    .card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px;
+                 background: var(--navy); color: #fff; }
+    .card-head b { font-size: 17px; }
+    .card-head span { font-size: 13px; color: var(--navy-ink); }
+    .wx { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; padding: 2px 10px;
+          border-radius: 99px; background: rgba(255,255,255,.14); color: #fff !important; }
+    .wx.rain { background: var(--signal); color: var(--signal-ink) !important; }
+    .stops { list-style: none; margin: 0; padding: 6px 16px; }
+    .stop { display: grid; grid-template-columns: 112px 1fr; gap: 12px; padding: 10px 0; }
+    .walk { color: var(--sub); font-size: 13px; padding: 2px 0 2px 124px; position: relative; }
+    .walk::before { content: ""; position: absolute; left: 50px; top: -6px; bottom: -6px; border-left: 2px dashed var(--rule); }
+    .stop .time { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .stop .stay { font-size: 13px; color: var(--sub); }
+    .card-sec { padding: 10px 16px; border-top: 1px solid var(--rule); font-size: 14px; }
+    .card-sec h4 { margin: 0 0 6px; font-size: 13px; color: var(--sub); font-weight: 600; }
+    .card-sec ul { margin: 0; padding-left: 18px; }
+    .card-sec .calc { color: var(--sub); font-size: 13px; }
+    .replan-chip { display: inline-block; background: var(--signal-soft); color: var(--signal-ink); border-radius: 6px;
+                   padding: 2px 8px; font-size: 13px; margin: 2px 4px 2px 0; }
+    details summary { cursor: pointer; color: var(--sub); font-size: 13px; }
+    .card-foot { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--rule);
+                 background: #f7f9fb; flex-wrap: wrap; }
+    .card-foot .notice { flex-basis: 100%; }
+
+    /* ── 탑승권 ── */
+    .pass-wrap { margin-top: 10px; }
+    .pass { display: grid; grid-template-columns: minmax(0, 1fr) 168px; position: relative;
+            filter: drop-shadow(0 1px 2px rgba(28,44,76,.18)); }
+    .pass-main, .pass-stub { background: var(--paper); position: relative; }
+    .pass-main { border-radius: 14px 0 0 14px; padding: 0 20px 18px; overflow: hidden;
+                 /* 절취선 쪽 반원 홈 */
+                 -webkit-mask: radial-gradient(circle 10px at 100% 0, transparent 98%, #000) top / 100% 51% no-repeat,
+                               radial-gradient(circle 10px at 100% 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+                         mask: radial-gradient(circle 10px at 100% 0, transparent 98%, #000) top / 100% 51% no-repeat,
+                               radial-gradient(circle 10px at 100% 100%, transparent 98%, #000) bottom / 100% 51% no-repeat; }
+    .pass-stub { border-radius: 0 14px 14px 0; padding: 18px 16px; border-left: 2px dashed var(--rule);
+                 display: flex; flex-direction: column; gap: 12px;
+                 -webkit-mask: radial-gradient(circle 10px at 0 0, transparent 98%, #000) top / 100% 51% no-repeat,
+                               radial-gradient(circle 10px at 0 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+                         mask: radial-gradient(circle 10px at 0 0, transparent 98%, #000) top / 100% 51% no-repeat,
+                               radial-gradient(circle 10px at 0 100%, transparent 98%, #000) bottom / 100% 51% no-repeat;
+                 transition: transform .5s cubic-bezier(.3,.7,.3,1.2); transform-origin: 0 100%; }
+    .pass.torn .pass-stub { transform: translate(4px, 3px) rotate(1.8deg); }
+    .pass-brand { display: flex; justify-content: space-between; margin: 0 -20px 14px; padding: 9px 20px;
+                  background: var(--navy); color: var(--navy-ink); font-size: 13px; }
+    .pass-brand span:first-child { color: #fff; font-weight: 700; }
+    .route { display: grid; grid-template-columns: auto 1fr auto; align-items: end; gap: 14px; }
+    .route small { display: block; color: var(--sub); font-size: 12px; }
+    .route div > b { font-size: 22px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+    .route .dest { text-align: center; position: relative; padding-bottom: 6px; }
+    .route .dest b { font-size: clamp(22px, 3.2vw, 30px); letter-spacing: -.03em; display: block; line-height: 1.15;
+                     word-break: keep-all; }
+    .route .dest::after { content: ""; position: absolute; left: 4px; right: 4px; bottom: 0; border-bottom: 2px dotted var(--rule); }
+    .plane { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); background: var(--paper);
+             padding: 0 6px; color: var(--navy); font-size: 14px; }
+    .legs { list-style: none; margin: 18px 132px 0 0; padding: 0; }   /* 오른쪽은 도장 자리 */
+    .legs li { display: grid; grid-template-columns: 24px 52px 1fr; gap: 10px; align-items: baseline;
+               padding: 8px 0; border-top: 1px solid #edf0f4; }
+    .legs .no { width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 12px;
+                font-weight: 700; display: grid; place-items: center; align-self: center; }
+    .legs .t { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .legs .p b { display: block; }
+    .legs .p small { color: var(--sub); font-size: 13px; }
+    .stamp { position: absolute; right: 16px; top: 150px; transform: rotate(-9deg); border: 2.5px solid var(--navy-soft);
+             color: var(--navy-soft); border-radius: 10px; padding: 6px 12px; text-align: center; opacity: .88;
+             background: rgba(255,255,255,.75); pointer-events: none; }
+    .stamp span { display: block; font-size: 12px; font-weight: 600; }
+    .stamp b { display: block; font-size: 16px; letter-spacing: -.01em; }
+    .stamp small { display: block; font-size: 11px; }
+    .stamp.rain, .stamp.replanned { border-color: #c98a00; color: #8a5d00; background: rgba(255,244,209,.85); }
+    .stub-date b { display: block; font-size: 24px; letter-spacing: -.02em; }
+    .stub-date span { color: var(--sub); font-size: 13px; }
+    .pass-stub dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 13px; }
+    .pass-stub dt { color: var(--sub); }
+    .pass-stub dd { margin: 0; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+    .barcode { height: 34px; margin-top: auto; border-radius: 2px; }
+    .pass-detail { margin-top: 10px; border: 1.5px solid var(--rule); border-radius: 12px; overflow: hidden; background: var(--paper); }
+    .pass-detail .card-sec:first-child { border-top: 0; }
+    .save-note:empty { display: none; }
+    .save-note { padding: 10px 16px; border-top: 1px solid var(--rule); }
+    @media (max-width: 640px) {
+      .pass { grid-template-columns: 1fr; }
+      .pass-main { border-radius: 14px 14px 0 0; -webkit-mask: none; mask: none; }
+      .pass-stub { border-radius: 0 0 14px 14px; border-left: 0; border-top: 2px dashed var(--rule); -webkit-mask: none; mask: none; }
+      .legs { margin-right: 0; }
+      .stamp { position: relative; top: auto; right: auto; display: inline-block; margin: 14px 0 0 auto; float: right; }
+      .pass-main::after { content: ""; display: block; clear: both; }
+    }
+
+    /* 입력 */
+    .composer { border-top: 1px solid var(--rule); padding: 14px 16px; }
+    .composer form { display: flex; gap: 10px; align-items: flex-end; }
+    .composer textarea { flex: 1; resize: none; border: 1.5px solid var(--rule); border-radius: 10px; padding: 10px 12px;
+                         font-size: 15px; min-height: 46px; max-height: 140px; }
+    .composer textarea:focus { outline: none; border-color: var(--navy); }
+    .examples { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; align-items: center; }
+    .examples button { border: 1.5px solid var(--rule); background: var(--paper); border-radius: 99px; padding: 7px 14px;
+                       font-size: 14px; cursor: pointer; color: var(--navy); }
+    .examples button:hover { border-color: var(--navy); }
+    .intro { margin: auto; text-align: center; max-width: 480px; color: var(--sub); }
+    .intro h2 { color: var(--navy); margin: 0 0 6px; font-size: 24px; }
+
+    /* ── 실행 과정 ── */
+    .trace { background: var(--paper); border-radius: 16px; display: flex; flex-direction: column; min-height: 0; }
+    .trace-head { padding: 14px 18px; border-bottom: 1px solid var(--rule); }
+    .trace-head h2 { margin: 0; font-size: 16px; }
+    .trace-head p { margin: 2px 0 0; font-size: 13px; color: var(--sub); }
+    .trace-body { overflow-y: auto; padding: 4px 18px 18px; flex: 1; }
+    .node { margin-top: 14px; }
+    .node-name { display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; }
+    .node-name span { font-weight: 400; color: var(--sub); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .ev { margin: 6px 0 0 6px; padding-left: 12px; border-left: 2px solid var(--rule); font-size: 13px; }
+    .ev .what { font-weight: 600; }
+    .ev .why { color: var(--sub); font-weight: 400; }
+    .ev.fail { border-left-color: var(--danger); }
+    .ev.cache { border-left-style: dashed; }
+    .replan { margin: 16px 0 2px; padding: 8px 12px; background: var(--signal); color: var(--signal-ink);
+              border-radius: 8px; font-size: 13px; font-weight: 700; }
+    .replan small { display: block; font-weight: 400; }
+    .replan.cap { background: var(--danger-soft); color: var(--danger); }
+    .pending { color: var(--sub); font-size: 14px; display: flex; gap: 10px; align-items: center; padding: 16px 0; }
+
+    /* 실행 과정은 '관제탑' — 출발 안내판과 같은 어두운 판. 재계획 노랑만 튄다 */
+    .trace { background: var(--terminal); color: #e6ebf5; }
+    .trace-head { border-bottom-color: rgba(255,255,255,.1); }
+    .trace-head h2 { color: #fff; display: flex; align-items: center; gap: 8px; }
+    .trace-head h2::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #5ed29a; }
+    .trace.busy .trace-head h2::before { background: var(--signal); animation: blink 1.2s infinite; }
+    .trace-head p, .trace .pending { color: var(--navy-ink); }
+    .trace .node-name span { color: #8d9ab5; }
+    .trace .ev { border-left-color: rgba(255,255,255,.16); }
+    .trace .ev .why { color: #9fb0d0; }
+    .trace .ev.fail { border-left-color: #ff7a6e; }
+    .trace .badge { background: rgba(255,255,255,.1); color: #cfd8ea; }
+    .trace .badge.ok { background: rgba(94,210,154,.16); color: #6fe0a9; }
+    .trace .badge.fail { background: rgba(255,122,110,.16); color: #ff9b90; }
+    .trace .badge.warn { background: var(--signal); color: var(--terminal); }
+    .trace .replan.cap { background: #3b2128; color: #ff9b90; }
+    .trace-body::-webkit-scrollbar { width: 8px; } .trace-body::-webkit-scrollbar-thumb { background: #2c3858; border-radius: 4px; }
+    /* 요청 전: 지나갈 단계를 미리 보여 준다 */
+    .gates-idle { list-style: none; margin: 14px 0 0; padding: 0; }
+    .gates-idle li { display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: center; padding: 8px 0;
+                     border-bottom: 1px dashed rgba(255,255,255,.1); font-size: 14px; }
+    .gates-idle .g { width: 28px; height: 28px; border-radius: 6px; background: var(--flap); color: var(--signal); display: grid;
+                     place-items: center; font-weight: 700; font-size: 13px; }
+    .gates-idle span:last-child { color: #66728c; font-size: 12px; }
+
+    /* 대화 쪽 다듬기 */
+    .chat-head { background: linear-gradient(var(--paper), var(--paper)) padding-box; position: relative; }
+    .chat-head::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 5px; border-radius: 16px 16px 0 0;
+                         background: repeating-linear-gradient(-45deg, var(--signal) 0 12px, var(--terminal) 12px 24px); }
+    .chat-head h1 { margin-top: 4px; }
+    .intro { text-align: left; max-width: 560px; }
+    .intro h2 { font-size: 28px; letter-spacing: -.02em; }
+    .examples { align-items: stretch; }
+    .examples button { border-radius: 8px; text-align: left; display: flex; gap: 10px; align-items: center; }
+    .examples button::before { content: "✈"; color: var(--navy-soft); font-size: 13px; }
+    .composer textarea { border: 2px solid var(--terminal); }
+    .composer textarea:focus { border-color: var(--navy-soft); box-shadow: 0 0 0 4px var(--signal-soft); }
+    .msg.user { background: var(--terminal); }
+  </style>
+</head>
+<body>
+  <header id="board" data-page="chat"></header>
+
+  <main>
+    <section class="chat" aria-label="대화">
+      <div class="chat-head">
+        <div>
+          <h1>여행 플래너</h1>
+          <div class="cond" id="condLine">여행지, 날짜, 시간, 야외/실내를 말해 주세요</div>
+        </div>
+        <button class="btn small" id="newChat" type="button">새 대화</button>
+      </div>
+      <div id="banner"></div>
+      <div class="messages" id="messages" aria-live="polite"></div>
+      <div class="composer">
+        <form id="composer">
+          <textarea id="input" rows="1" maxlength="500" placeholder="예: 다음 주 토요일 오사카, 오후에 야외 위주로. 비 오면 곤란해"
+                    aria-label="요청 입력"></textarea>
+          <button class="btn primary" id="send" type="submit">보내기</button>
+        </form>
+      </div>
+    </section>
+
+    <aside class="trace" aria-label="실행 과정">
+      <div class="trace-head">
+        <h2>실행 과정</h2>
+        <p id="traceMeta">요청을 보내면 단계와 Tool 호출이 순서대로 나타나요.</p>
+      </div>
+      <div class="trace-body" id="trace"></div>
+    </aside>
+  </main>
+
+  <script src="common.js?v=3"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const EXAMPLES = [
+      "다음 주 토요일 오사카, 오후에 야외 위주로 돌고 싶어. 비 오면 곤란해",
+      "이번 주말 서울 종로에서 2시부터 6시까지, 저녁 먹을 곳도 알려줘",
+      "내일 부산 해운대 날씨 어때?",
+      "가을에 가기 좋은 일본 미식 여행지 추천해줘",
+    ];
+    const NODE = { analyze: "요청 분석", plan: "계획 수립", execute: "Tool 실행", judge: "제약 판단", respond: "응답 작성",
+                   planner: "Planner · 작업 목록", worker: "Worker · 작업 수행", route_worker: "Planner · 요청 검토",
+                   review: "로깅 Agent · 실행 검증" };
+    const CARDS = {};
+    let sessionId = storage("tp_session");
+    let busy = false;
+
+    const IDLE_GATES = [["요청 분석", "LLM"], ["후보 장소", "Geoapify"], ["그날 날씨", "Visual Crossing"],
+                        ["내 약속", "캘린더"], ["판단 · 재계획", "최대 3회"], ["응답 · 탑승권", "LLM"]];
+    function idleTrace() {
+      $("trace").innerHTML = `<ol class="gates-idle">${IDLE_GATES.map(([n, t], i) =>
+        `<li><span class="g">${i + 1}</span><span>${n}</span><span>${t}</span></li>`).join("")}</ol>`;
+    }
+
+    renderBoard();
+    renderIntro();
+    idleTrace();
+
+    // 키가 없으면 무엇을 해야 하는지 안내한다 (F3019)
+    document.addEventListener("status", (e) => {
+      const st = e.detail;
+      if (!st) {
+        $("banner").innerHTML = `<div class="notice error">서버에 연결할 수 없어요. TripPlanner 폴더에서
+          <code>uvicorn app.main:app --reload</code> 로 서버를 켠 뒤 새로고침하세요.</div>`;
+        return;
+      }
+      const missing = st.keys.filter((k) => !k.set);
+      if (!missing.length) { $("banner").innerHTML = ""; return; }
+      const llmMissing = missing.some((k) => k.name === "GMS_KEY");
+      $("banner").innerHTML = `<div class="notice ${llmMissing ? "error" : "warn"}">
+        ${llmMissing ? "LLM 키가 없어 요청을 이해할 수 없어요." : "일부 키가 없어 해당 정보는 빠진 채로 답해요."}
+        <code>.env</code> 에 ${missing.map((k) => `<b>${k.name}</b>(${esc(k.label)})`).join(", ")} 를 넣고 서버를 다시 켜 주세요.</div>`;
+    });
+
+    function renderIntro() {
+      $("messages").innerHTML = `<div class="intro">
+          <h2>어디로, 언제 가세요?</h2>
+          <p>여행지와 날짜, 시간대를 말하면 후보 장소와 그날 날씨를 확인해 하루 일정을 짜 드려요.
+             비가 오거나 시간이 모자라면 다른 방법을 찾아 다시 계획해요.</p>
+          <div class="examples">${EXAMPLES.map((x) => `<button type="button">${esc(x)}</button>`).join("")}</div>
+        </div>`;
+      $("messages").querySelectorAll(".examples button").forEach((b) =>
+        b.addEventListener("click", () => { $("input").value = b.textContent; send(); }));
+    }
+
+    function addMessage(cls, html) {
+      $("messages").querySelector(".intro")?.remove();
+      const div = document.createElement("div");
+      div.className = `msg ${cls}`;
+      div.innerHTML = html;
+      $("messages").appendChild(div);
+      div.scrollIntoView({ block: "end", behavior: "smooth" });
+      return div;
+    }
+
+    async function send() {
+      const text = $("input").value.trim();
+      if (!text || busy) return;
+      busy = true;
+      $("send").disabled = true;
+      $("input").value = "";
+      addMessage("user", esc(text));
+      const wait = addMessage("bot thinking", `<div class="text"><span class="dots"><i></i><i></i><i></i></span>
+        요청을 분석하고 후보와 날씨를 확인하는 중이에요</div>`);
+      $("trace").innerHTML = `<div class="pending"><span class="dots"><i></i><i></i><i></i></span>처리 중 — 끝나면 단계별 기록이 나타나요</div>`;
+      $("traceMeta").textContent = "처리 중…";
+      document.querySelector(".trace").classList.add("busy");
+      try {
+        const res = await fetch(`${API_BASE}/api/chat`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text, session_id: sessionId }),
+        });
+        if (!res.ok) throw new Error(res.status);
+        const out = await res.json();
+        sessionId = out.session_id;
+        storage("tp_session", sessionId);
+        wait.remove();
+        renderAnswer(out);
+        renderTrace(out);
+        renderConditions(out.conditions || {});
+      } catch {
+        wait.remove();
+        addMessage("bot error", `<div class="text">서버에 연결할 수 없어요. 서버가 켜져 있는지 확인한 뒤 다시 보내 주세요.</div>`);
+        $("trace").innerHTML = "";
+        $("traceMeta").textContent = "요청이 서버에 닿지 않았어요.";
+      } finally {
+        busy = false;
+        document.querySelector(".trace").classList.remove("busy");
+        $("send").disabled = false;
+        $("input").focus();
+      }
+    }
+
+    function renderConditions(c) {
+      const parts = [c.destination, c.visit_date, (c.start_time || c.end_time) && `${c.start_time ?? ""}~${c.end_time ?? ""}`,
+                     c.style === "indoor" ? "실내" : c.style === "outdoor" ? "야외" : null,
+                     c.outdoor_only && "야외만", c.want_food && "식당 포함"].filter(Boolean);
+      $("condLine").textContent = parts.length ? `기억하는 조건: ${parts.join(", ")}` : "여행지, 날짜, 시간, 야외/실내를 말해 주세요";
+    }
+
+    // ── 답변 + 추천 카드 ──
+    function renderAnswer(out) {
+      if (out.error) {
+        const tip = out.error.code === "LLM_RATE_LIMIT" ? "잠시 기다렸다가 같은 요청을 다시 보내 보세요." : "";
+        addMessage("bot error", `<div class="text">${richText(out.reply)}${tip ? `<p>${tip}</p>` : ""}</div>`);
+        return;
+      }
+      const r = out.result || {};
+      addMessage("bot", `<div class="text">${richText(out.reply)}</div>${r.itinerary ? card(r) : extras(r)}`);
+    }
+
+    function weatherChip(w) {
+      if (!w) return "";
+      if (w.status === "unknown") return `<span class="wx">날씨 판단 보류</span>`;
+      return `<span class="wx ${w.rainy ? "rain" : ""}">${w.rainy ? "비 예보" : "강수확률"} ${Math.round(w.precip_prob)}%</span>`;
+    }
+
+    // ── 탑승권 (추천 일정) ──
+    // 왼쪽 본권: 목적지 · 구간(장소) · 판단 도장 / 오른쪽 보관용 조각: 날짜 · 시간창 · 저장
+    function card(r) {
+      const id = "c" + Math.random().toString(36).slice(2, 8);
+      CARDS[id] = r;
+      const d = new Date(r.date + "T00:00");
+      const day = `${d.getMonth() + 1}월 ${d.getDate()}일`;
+      const week = d.toLocaleDateString("ko-KR", { weekday: "short" });
+      const it = r.itinerary, c = r.calc || {};
+      const legs = it.map((s, i) => `
+        <li>
+          <span class="no">${i + 1}</span>
+          <span class="t">${s.start_time}</span>
+          <span class="p"><b>${esc(s.name)}</b><small>${s.stay_min}분 머무름${s.walk_to_next_min ? ` · 다음까지 도보 ${s.walk_to_next_min}분` : ""}</small></span>
+        </li>`).join("");
+      return `<div class="pass-wrap" id="${id}">
+        <article class="pass" aria-label="${esc(r.destination)} ${day} 일정 탑승권">
+          <section class="pass-main">
+            <header class="pass-brand"><span>TripPlanner</span><span>하루 일정권</span></header>
+            <div class="route">
+              <div><small>출발</small><b>${it[0].start_time}</b></div>
+              <div class="dest"><b>${esc(r.destination)}</b><span class="plane" aria-hidden="true">✈</span></div>
+              <div><small>마침</small><b>${it.at(-1).end_time}</b></div>
+            </div>
+            <ol class="legs">${legs}</ol>
+            ${stamp(r)}
+          </section>
+          <section class="pass-stub">
+            <div class="stub-date"><b>${day}</b><span>${week}요일</span></div>
+            <dl>
+              <dt>시간창</dt><dd>${(c["시간창"] || []).join("–")}</dd>
+              <dt>장소</dt><dd>${it.length}곳</dd>
+              <dt>이동</dt><dd>${c["이동_합_분"] ?? 0}분</dd>
+            </dl>
+            <div class="barcode" style="${barcode(r.destination + r.date)}" aria-hidden="true"></div>
+            <button class="btn primary small" type="button" onclick="savePlan('${id}', this)">이 일정 저장</button>
+          </section>
+        </article>
+        <div class="pass-detail">
+          ${c["시간창"] ? `<div class="card-sec"><h4>판단 기준</h4>
+              <div>늦어도 ${esc(c["늦어도_마지막_장소를_나서는_시각"])}에는 마지막 장소를 나서야 해요. 장소당 ${c["장소당_체류_분"]}분, 이동 합 ${c["이동_합_분"]}분.</div>
+              <div class="calc">${esc(c["식"])}</div></div>` : ""}
+          ${extras(r, true)}
+          <div class="save-note"></div>
+        </div>
+      </div>`;
+    }
+
+    // 판단 결과를 여권 도장처럼 — 날씨 한 줄 + 재계획 결과 한 줄
+    function stamp(r) {
+      const w = r.weather;
+      const top = !w ? "날씨 미확인" : w.status === "unknown" ? "날씨 판단 보류"
+                : `${w.rainy ? "비 예보" : "강수"} ${Math.round(w.precip_prob)}%`;
+      const last = r.replans?.at(-1);
+      const bottom = last ? last.change.replace("야외 → 실내 후보로 다시 찾기", "실내로 변경").slice(0, 16) : "일정 확정";
+      const cls = last ? "replanned" : w?.rainy ? "rain" : "";
+      return `<div class="stamp ${cls}" title="${esc(w?.note ?? "")}"><span>${esc(top)}</span><b>${esc(bottom)}</b>
+        ${last ? `<small>재계획 ${last.n}회</small>` : ""}</div>`;
+    }
+
+    // 막대 굵기를 글자로부터 만든다 — 같은 일정이면 같은 무늬
+    function barcode(seed) {
+      let x = [...seed].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7), pos = 0, stops = [];
+      while (pos < 100) {
+        x = (x * 1103515245 + 12345) >>> 0;
+        const bar = 0.8 + (x % 4) * 0.7, gap = 0.8 + ((x >> 3) % 3) * 0.8;
+        stops.push(`var(--navy) ${pos}% ${pos + bar}%`, `transparent ${pos + bar}% ${pos + bar + gap}%`);
+        pos += bar + gap;
+      }
+      return `background: linear-gradient(90deg, ${stops.join(",")})`;
+    }
+
+    function extras(r, inCard = false) {
+      const sec = (title, body) => body ? `<div class="card-sec"><h4>${title}</h4>${body}</div>` : "";
+      let html = "";
+      if (!inCard && r.weather) html += sec("날씨", esc(r.weather.note));
+      if (r.food?.length) html += sec("주변 식당 (카카오 로컬)", `<ul>${r.food.map((f) =>
+        `<li><a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}</a>
+         <span class="calc">${esc(f.address ?? "")}${f.distance_m != null ? `, ${f.distance_m}m` : ""}</span></li>`).join("")}</ul>`);
+      if (r.food_error) html += sec("주변 식당", `<span class="badge fail">${esc(r.food_error.code)}</span> ${esc(r.food_error.message)}`);
+      if (r.docs?.ok) html += sec("참고 문서", `<ul>${r.docs.data.hits.map((h) =>
+        `<li>${h.url ? `<a href="${esc(h.url)}" target="_blank" rel="noopener">${esc(h.title)}</a>` : esc(h.title)}
+         <span class="calc">${esc(h.source ?? "")}</span></li>`).join("")}</ul>`);
+      if (r.calendar) html += sec("캘린더", r.calendar.ok ? `등록했어요: ${esc(r.calendar.data.title)}`
+        : `<span class="badge fail">${esc(r.calendar.error.code)}</span> ${esc(r.calendar.error.message)}`);
+      if (r.replans?.length) html += sec("재계획", r.replans.map((p) =>
+        `<span class="replan-chip">${p.n}회차: ${esc(p.change)}</span>`).join(""));
+      if (r.excluded?.length) html += sec("제외한 후보", `<details><summary>${r.excluded.length}곳 보기</summary><ul>${r.excluded.map((e) =>
+        `<li>${esc(e.name)} — ${esc(e.reason)}</li>`).join("")}</ul></details>`);
+      const notes = [...(r.defaults || []), ...(r.assumptions || [])];
+      if (notes.length) html += sec("기본값과 해석", `<ul>${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>`);
+      if (r.evidence?.length) html += sec("근거 Tool 결과", `<details><summary>${r.evidence.length}건</summary><ul>${r.evidence.map((e) =>
+        `<li><span class="badge ${e.ok ? "ok" : "fail"}">${esc(e.tool)}</span> ${esc(e.brief)}</li>`).join("")}</ul></details>`);
+      if (!html) return "";
+      return inCard ? html : `<div class="card">${html}</div>`;
+    }
+
+    // 추천 일정을 '내 일정'으로 저장 — 겹치는 일정이 있으면 알린다 (F3015)
+    async function savePlan(id, btn) {
+      const r = CARDS[id];
+      btn.disabled = true;
+      const clashes = [];
+      try {
+        for (const s of r.itinerary) {
+          const res = await fetch(`${API_BASE}/api/plans`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ place_name: s.name, city: r.city || r.destination, visit_date: r.date,
+                                   start_time: s.start_time, end_time: s.end_time, lat: s.lat, lon: s.lon }),
+          });
+          if (!res.ok) throw new Error();
+          const { overlaps } = await res.json();
+          overlaps.forEach((o) => clashes.push(`${hm(o.start_time)}–${hm(o.end_time)} ${o.place_name}`));
+        }
+        const uniq = [...new Set(clashes)];
+        const wrap = document.getElementById(id);
+        wrap.querySelector(".pass").classList.add("torn");
+        btn.textContent = "보관함에 저장됨";
+        wrap.querySelector(".save-note").innerHTML = uniq.length
+          ? `<div class="notice warn">${r.itinerary.length}곳을 저장했어요. 같은 날 시간이 겹치는 일정이 있어요.<ul>${uniq.map((c) => `<li>${esc(c)}</li>`).join("")}</ul> <a href="plans.html">내 일정에서 보기</a></div>`
+          : `<div class="notice ok">${r.itinerary.length}곳을 내 일정에 저장했어요. <a href="plans.html">내 일정에서 보기</a></div>`;
+      } catch {
+        btn.disabled = false;
+        document.getElementById(id).querySelector(".save-note").innerHTML =
+          `<div class="notice error">저장하지 못했어요. 서버가 켜져 있는지 확인해 주세요.</div>`;
+      }
+    }
+
+    // ── 실행 과정 (F3019) ──
+    function renderTrace(out) {
+      let html = "", open = false, lastNode = null;
+      const close = () => { if (open) { html += "</div>"; open = false; } };
+      const nodeMs = {};
+      out.steps.forEach((e) => { if (e.type === "node_end") nodeMs[`${e.node}-${e.seq}`] = e.data.ms; });
+      const endsBySeq = out.steps.filter((e) => e.type === "node_end");
+      for (const e of out.steps) {
+        const d = e.data;
+        if (e.type === "node_start") {
+          close();
+          const end = endsBySeq.find((x) => x.node === e.node && x.seq > e.seq);
+          html += `<div class="node"><div class="node-name">${NODE[e.node] ?? esc(e.node)}<span>${end ? end.data.ms + "ms" : ""}</span></div>`;
+          open = true;
+        }
+        else if (e.type === "decision" && d.kind === "replan") { close(); html += `<div class="replan">재계획 ${d.n}회차 — ${esc(d.change)}<small>${esc(d.reason)}</small></div>`; }
+        else if (e.type === "decision" && d.kind === "replan_cap") { close(); html += `<div class="replan cap">재계획 상한 도달 — 멈춤<small>${esc(d.reason)}</small></div>`; }
+        else if (e.type === "decision") html += ev("", decisionText(d), d.reason);
+        else if (e.type === "tool_result") html += ev(d.ok ? "" : "fail",
+            `${d.flow ? "흐름 · " : ""}${esc(d.tool)} <span class="badge ${d.ok ? "ok" : "fail"}">${d.ok ? "성공" : esc(d.code || "실패")}</span> <span class="why">${d.ms}ms</span>`, d.brief);
+        else if (e.type === "tool_cache_hit") html += ev("cache", `${esc(d.tool)} <span class="badge">재사용</span>`, "이미 받은 결과를 다시 써서 호출하지 않았어요");
+        else if (e.type === "error") html += ev("fail", `오류 ${esc(d.code || d.error || "")}`, d.message);
+        else if (e.type === "llm_call") html += ev("", `LLM · ${esc(d.purpose)} <span class="why">${d.ms}ms</span>`, "");
+      }
+      close();
+      $("trace").innerHTML = html || `<div class="pending">기록된 단계가 없어요.</div>`;
+      const tools = out.steps.filter((e) => e.type === "tool_call" && !e.data.flow).length;
+      const llms = out.steps.filter((e) => e.type === "llm_call").length;
+      $("traceMeta").textContent = `${(out.ms / 1000).toFixed(1)}초 · LLM ${llms}회 · Tool ${tools}회 · 재계획 ${out.replan_count}회`;
+    }
+
+    function ev(cls, what, why) {
+      return `<div class="ev ${cls}"><div class="what">${what}</div>${why ? `<div class="why">${esc(why)}</div>` : ""}</div>`;
+    }
+
+    function decisionText(d) {
+      switch (d.kind) {
+        case "intent": return `의도: ${esc(d.intent)}${d.changed?.length ? ` <span class="why">(바뀐 조건: ${esc(d.changed.join(", "))})</span>` : ""}`;
+        case "plan": return d.steps.length ? `계획: ${esc(d.steps.join(" → "))}` : "계획: 부를 Tool 없음";
+        case "clarify": return `되묻기: ${esc(d.question)}`;
+        case "satisfied": return `<span class="badge ok">제약 충족</span>`;
+        case "stop": return `<span class="badge fail">중단</span>`;
+        case "respond": return "응답으로";
+        case "tool_choice": return `LLM 이 고른 Tool: ${esc((d.llm_tools || []).join(" → ") || "없음")}`
+            + (d.added?.length ? ` <span class="badge warn">+ ${esc(d.added.join(", "))}</span>` : "")
+            + (d.dropped?.length ? ` <span class="badge fail">− ${esc(d.dropped.map((x) => x.tool).join(", "))}</span>` : "");
+        case "tasks": return `작업 목록 → Worker: ${esc(d.steps.join(" → "))}`;
+        case "worker_report": return `수행 보고 → Planner`;
+        case "worker_decide": return `Worker 판단(LLM): ${esc(d.action)}${Object.keys(d.new_args || {}).length ? " " + esc(JSON.stringify(d.new_args)) : ""}`;
+        case "worker_failure": return `<span class="badge fail">${esc(d.code)}</span> ${esc(d.tool)}`;
+        case "request_declined": return "Planner: 요청을 계획으로 풀 수 없음";
+        case "review": return `실행 검증: <span class="badge ${d.verdict === "anomaly" ? "warn" : "ok"}">${d.verdict === "anomaly" ? "이상" : d.verdict === "normal" ? "이상 없음" : "판정 불가"}</span>`;
+        case "evaluation_ref": return `직전 실행 평가 참조: <span class="badge warn">${esc(d.codes.join(", "))}</span>`;
+        default: return esc(d.kind);
+      }
+    }
+
+    // 홈의 체크인 카운터에서 넘어온 요청은 바로 보낸다. 새로고침해도 다시 보내지 않게 주소에서 지운다
+    const handed = new URLSearchParams(location.search).get("q");
+    if (handed) {
+      history.replaceState(null, "", location.pathname);
+      $("input").value = handed.slice(0, 500);
+      send();
+    }
+
+    $("composer").addEventListener("submit", (e) => { e.preventDefault(); send(); });
+    $("input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+    });
+    $("newChat").addEventListener("click", () => {
+      if (sessionId) fetch(`${API_BASE}/api/chat/${sessionId}`, { method: "DELETE" }).catch(() => {});
+      sessionId = null;
+      storage("tp_session", null);
+      renderIntro();
+      renderConditions({});
+      idleTrace();
+      $("traceMeta").textContent = "요청을 보내면 단계와 Tool 호출이 순서대로 나타나요.";
+    });
+  </script>
+</body>
+</html>

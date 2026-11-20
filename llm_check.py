@@ -3,7 +3,7 @@
 준비 (.env):
     GMS_KEY=발급받은_키
     GMS_BASE_URL=...     (선택) 기본값이 안 맞으면 GMS 사이트에 안내된 주소로 바꾼다
-    GMS_MODEL=...        (선택) 기본 gpt-4.1-mini
+    GMS_MODEL=...        (선택) 기본 claude-haiku-5-5
 
 실행:  python llm_check.py
     ① 평문 호출       → 답이 한 줄 나오면 키 · 주소 · 환경변수 로딩 OK
@@ -19,9 +19,9 @@ from dotenv import load_dotenv
 from tools import catalog
 
 load_dotenv()
-KEY = os.getenv("GMS_KEY")
-BASE_URL = os.getenv("GMS_BASE_URL", "https://gms.ssafy.io/gmsapi/api.openai.com/v1").rstrip("/")
-MODEL = os.getenv("GMS_MODEL", "gpt-4.1-mini")
+KEY = os.getenv("GMS_KEY") or os.getenv("GMS_API_KEY")
+BASE_URL = os.getenv("GMS_BASE_URL", "https://gms.ssafy.io/gmsapi/api.anthropic.com/v1").rstrip("/")
+MODEL = os.getenv("GMS_MODEL", "claude-haiku-5-5")
 
 
 def chat(messages, tools=None):
@@ -29,7 +29,8 @@ def chat(messages, tools=None):
     if tools:
         body["tools"] = tools
     res = requests.post(f"{BASE_URL}/chat/completions",
-                        headers={"Authorization": f"Bearer {KEY}", "Content-Type": "application/json"},
+                        headers={"Authorization": f"Bearer {KEY}", "Content-Type": "application/json",
+                                 **({"x-api-key": KEY} if "anthropic" in BASE_URL else {})},   # Claude 는 x-api-key 도
                         json=body, timeout=60)
     if res.status_code >= 400:                     # 키는 찍지 않고 상태와 본문 앞부분만
         raise RuntimeError(f"HTTP {res.status_code}: {res.text[:200]}")
@@ -68,3 +69,19 @@ if __name__ == "__main__":
                 print(f"     → {c['function']['name']}({json.dumps(json.loads(c['function']['arguments']), ensure_ascii=False)})")
         else:
             print(f"     → Tool 없음: {(msg.get('content') or '')[:80]}")
+
+    # ③ Agent 가 실제로 쓰는 경로 — ①② 는 HTTP 로 직접 불렀지만, Agent 는 LangChain 으로 구조화 출력을 받는다.
+    #    여기서 통과해야 서버 · compare_modes.py 가 돈다.
+    print("\n③ Agent 경로 확인 (app.agent.llm — 요청 분석 · 응답 작성)")
+    try:
+        from app.agent import llm as agent_llm
+        a = agent_llm.analyze("다음 주 토요일 오사카에서 오후에 야외 위주로. 비 오면 곤란해", {}, None, [])
+        print(f"   OK → 의도 {a.intent} · 여행지 {a.changes.destination} · 날짜 {a.changes.visit_date} · "
+              f"고른 Tool {a.tools} (구조화 경로: {agent_llm.STRUCTURED['mode']})")
+        if agent_llm.STRUCTURED.get("last_error"):
+            print(f"   참고 → 첫 방식이 거절돼 JSON 경로로 바꿨습니다: {agent_llm.STRUCTURED['last_error'][:150]}")
+        r = agent_llm.respond("오사카 일정", {"추천_일정": [{"name": "오사카성", "start_time": "13:00"}]})
+        print(f"   OK → 응답 작성: {r[:60]}")
+    except Exception as e:
+        detail = getattr(e, "detail", "") or str(e)
+        raise SystemExit(f"   FAIL → {type(e).__name__}: {detail[:300]}")

@@ -1,383 +1,465 @@
 <!doctype html>
-<!-- 계획 관리 화면 (F3016 · F3018)
+<!-- 홈 — 출국장 (F3018)
      서버: uvicorn app.main:app --reload             (TripPlanner 폴더, 터미널 1)
      화면: python -m http.server 5500 -d frontend    (TripPlanner 폴더, 터미널 2)  →  http://localhost:5500
+     (start.bat 를 더블클릭하면 둘 다 켜진다)
 
-     디자인: 공항 안내판(남색 · 신호 노랑) + 하루 시간표.
-     일정 블록의 높이는 머무는 시간에 비례하고, 시간이 겹치는 일정은 나란히 놓여 노랑으로 표시된다. -->
+     출발 안내판: 저장한 일정(GET /api/plans)을 날짜 · 도시별 '항공편'으로 묶어 글자판이 넘어가며 보여 준다
+     체크인 카운터: 요청을 적으면 대화 화면(chat.html?q=…)으로 넘겨 바로 보낸다
+     탑승 동선: Agent 가 일정을 짜는 순서 -->
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TripPlanner · 내 여행 일정</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <title>TripPlanner · 출국장</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="style.css?v=3" />
   <style>
-    :root {
-      --navy: #1c2c4c;        /* 안내판 바탕 · 본문 글자 */
-      --navy-soft: #2e4170;
-      --signal: #ffc629;      /* 신호 노랑 — 겹침 · 핵심 강조에만 */
-      --signal-ink: #5c4300;
-      --fog: #eef1f5;         /* 화면 바탕 */
-      --paper: #ffffff;
-      --rule: #d5dbe5;
-      --sub: #5d6880;
-      --danger: #c63b32;
-      --hour: 64px;           /* 시간표 한 시간의 높이 */
-      --font: "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    main { max-width: 1200px; margin: 0 auto; padding: 0 24px 64px; }
+    .fids { margin-top: -64px; position: relative; z-index: 5; }
+
+
+    /* ── 첫 화면: 해 질 녘 활주로에서 TripPlanner 여객기가 이륙한다 ── */
+    .hero { position: relative; overflow: hidden; color: #fff; isolation: isolate;
+            background: linear-gradient(180deg, #0a1330 0%, #142450 38%, #263a70 64%, #4b4f7a 82%, #a8834f 96%, #d9a640 100%); }
+    .hero-inner { position: relative; z-index: 3; max-width: 1200px; margin: 0 auto; padding: 72px 24px 260px; }
+    .hero h1 { margin: 0; font-size: clamp(36px, 5.4vw, 64px); line-height: 1.08; letter-spacing: -.035em; word-break: keep-all;
+               text-shadow: 0 2px 24px rgba(10,19,48,.6); }
+    .hero .lead { margin: 16px 0 26px; color: #c9d3ea; font-size: 17px; max-width: 46ch; }
+    .ticket-form { display: flex; gap: 10px; align-items: stretch; max-width: 760px; padding: 8px; border-radius: 16px;
+                   background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.22); backdrop-filter: blur(6px); }
+    .ticket-form textarea { flex: 1; resize: none; border: 0; border-radius: 10px; padding: 14px 16px; font-size: 16px;
+                            min-height: 58px; background: #fff; color: var(--navy); }
+    .ticket-form textarea:focus { outline: none; box-shadow: 0 0 0 3px var(--signal); }
+    .ticket-form button { border: 0; border-radius: 10px; background: var(--signal); color: var(--terminal); font-weight: 700;
+                          font-size: 18px; padding: 0 26px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+    .ticket-form button:hover { filter: brightness(1.06); }
+    .ticket-form button svg { width: 22px; height: 22px; }
+    .samples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; max-width: 820px; }
+    .samples button { border: 1px solid rgba(255,255,255,.2); background: rgba(10,19,48,.35); color: #e6ebf5; border-radius: 99px;
+                      padding: 7px 14px; font-size: 14px; cursor: pointer; text-align: left; backdrop-filter: blur(4px); }
+    .samples button:hover { background: rgba(255,255,255,.14); }
+    .samples button b { color: var(--signal); margin-right: 6px; }
+
+    .scene, .scene * { pointer-events: none; }
+    .scene { position: absolute; inset: 0; z-index: 1; }
+    .glow { position: absolute; left: 50%; bottom: 60px; width: 1600px; height: 380px; transform: translateX(-50%);
+            background: radial-gradient(closest-side, rgba(255,198,41,.35), rgba(255,198,41,0)); }
+    .star { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; animation: twinkle 3s ease-in-out infinite; }
+    @keyframes twinkle { 50% { opacity: .15; } }
+    .cloud { position: absolute; height: 70px; border-radius: 50%; opacity: .5;
+             background: radial-gradient(60% 70% at 30% 60%, rgba(220,228,245,.22), transparent 70%),
+                         radial-gradient(50% 80% at 62% 45%, rgba(220,228,245,.2), transparent 70%),
+                         radial-gradient(45% 60% at 82% 65%, rgba(220,228,245,.16), transparent 70%);
+             animation: drift linear infinite; }
+    @keyframes drift { from { transform: translateX(-30vw); } to { transform: translateX(120vw); } }
+
+    /* 이륙하는 여객기 — 지상(건물 · 활주로) 뒤에서 떠올라 오른쪽 위로 */
+    .takeoff { position: absolute; left: 0; top: 0; z-index: 2; display: flex; align-items: center;
+               animation: takeoff 12s cubic-bezier(.55, 0, .8, .9) infinite; }
+    .takeoff .liner { width: 300px; height: auto; flex: none; margin-left: -6px; filter: drop-shadow(0 6px 14px rgba(10,19,48,.5)); }
+    .takeoff .contrail { width: 55vw; height: 4px; border-radius: 4px; margin-top: 30px;
+                         background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.55)); }
+    .takeoff .contrail.b { position: absolute; left: 4vw; top: calc(50% + 21px); width: 48vw; height: 3px; opacity: .6; }
+    @keyframes takeoff {
+      0%   { transform: translate(-70vw, 470px) rotate(-3deg) scale(.82); }
+      14%  { transform: translate(-28vw, 440px) rotate(-6deg) scale(.88); }
+      58%  { transform: translate(105vw, 30px) rotate(-14deg) scale(1.05); }
+      100% { transform: translate(105vw, 30px) rotate(-14deg) scale(1.05); }
     }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: var(--font); background: var(--fog); color: var(--navy);
-           font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
-    button, input, textarea { font: inherit; color: inherit; }
-    :focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }
 
-    /* ── 상단 안내판 ───────────────────────── */
-    .board { background: var(--navy); color: #fff; }
-    .board-inner { max-width: 1120px; margin: 0 auto; padding: 22px 24px 20px;
-                   display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-    .brand { display: flex; align-items: center; gap: 12px; }
-    .brand-mark { width: 34px; height: 34px; border-radius: 8px; background: var(--signal);
-                  display: grid; place-items: center; }
-    .brand-mark svg { width: 20px; height: 20px; }
-    .brand h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
-    .summary { display: flex; gap: 28px; }
-    .summary div { display: flex; flex-direction: column; }
-    .summary b { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
-    .summary span { font-size: 13px; color: #b8c3da; }
-    .summary .warn b { color: var(--signal); }
+    .ground { position: absolute; left: 0; right: 0; bottom: 0; height: 160px; z-index: 3;
+              background: linear-gradient(180deg, #1a2445, #0b1226 60%); }
+    .runway { position: absolute; left: 50%; bottom: 0; width: 1500px; height: 160px; transform: translateX(-50%); z-index: 3;
+              background: #070c1b; clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); }
+    .centerline { position: absolute; left: 50%; bottom: 0; width: 70px; height: 160px; transform: translateX(-50%); z-index: 4;
+                  clip-path: polygon(48.5% 0, 51.5% 0, 100% 100%, 0 100%);
+                  background: repeating-linear-gradient(180deg, rgba(255,255,255,.9) 0 16px, transparent 16px 36px);
+                  animation: roll .7s linear infinite; }
+    @keyframes roll { to { background-position: 0 36px; } }
+    .edge { position: absolute; z-index: 4; border-radius: 50%; background: #ffd56b; box-shadow: 0 0 8px 2px rgba(255,198,41,.7);
+            transform: translate(-50%, 50%); animation: chase 1.8s ease-in-out infinite; }
+    @keyframes chase { 0%, 100% { opacity: .35; } 10% { opacity: 1; } }
+    .bldg { position: absolute; bottom: 160px; z-index: 3; background: #0b1226; }
+    .terminal-bldg { left: 4%; width: min(420px, 34vw); height: 54px; border-radius: 4px 4px 0 0; }
+    .terminal-bldg::after { content: ""; position: absolute; left: 12px; right: 12px; top: 16px; height: 10px;
+                            background: repeating-linear-gradient(90deg, rgba(255,214,107,.75) 0 12px, transparent 12px 20px); }
+    .terminal-bldg::before { content: ""; position: absolute; left: 30%; top: -18px; width: 40%; height: 20px; background: #0b1226;
+                             border-radius: 50% 50% 0 0 / 100% 100% 0 0; }
+    .tower { right: 9%; width: 70px; height: 180px; }
+    .tower svg { width: 100%; height: 100%; display: block; }
+    .tower .beacon { animation: strobe 1.6s steps(1) infinite; }
 
-    /* ── 본문 ─────────────────────────────── */
-    main { max-width: 1120px; margin: 0 auto; padding: 28px 24px 64px;
-           display: grid; grid-template-columns: 320px 1fr; gap: 32px; align-items: start; }
-    @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) {
+      .hero-inner { padding: 44px 18px 190px; }
+      .ticket-form { flex-direction: column; } .ticket-form button { padding: 14px; justify-content: center; }
+      .takeoff .liner { width: 180px; }
+      .terminal-bldg { display: none; }
+    }
 
-    /* 폼 */
-    .panel { background: var(--paper); border-radius: 14px; padding: 22px; position: sticky; top: 20px;
-             box-shadow: 0 1px 0 var(--rule); }
-    @media (max-width: 860px) { .panel { position: static; } }
-    .panel h2 { margin: 0 0 4px; font-size: 18px; font-weight: 700; }
-    .panel p.hint { margin: 0 0 14px; color: var(--sub); font-size: 13px; }
-    label { display: block; font-size: 13px; font-weight: 500; color: var(--sub); margin: 14px 0 6px; }
-    input, textarea { width: 100%; padding: 10px 12px; border: 1.5px solid var(--rule); border-radius: 9px;
-                      background: var(--paper); font-size: 15px; transition: border-color .15s; }
-    input::placeholder, textarea::placeholder { color: #a3acbd; }
-    input:focus, textarea:focus { outline: none; border-color: var(--navy); }
-    textarea { resize: vertical; min-height: 64px; }
-    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .actions { display: flex; gap: 8px; margin-top: 20px; }
-    .btn { border: 1.5px solid var(--rule); background: var(--paper); border-radius: 9px;
-           padding: 10px 14px; font-weight: 600; cursor: pointer; }
-    .btn:hover { border-color: var(--navy); }
-    .btn.primary { flex: 1; background: var(--navy); border-color: var(--navy); color: #fff; }
-    .btn.primary:hover { background: var(--navy-soft); }
-    .btn.danger { color: var(--danger); }
-    .btn.danger:hover { border-color: var(--danger); }
+    /* ── 출발 안내판 ── */
+    .fids { background: var(--terminal); color: #fff; border-radius: 14px; padding: 22px 26px 18px;
+            box-shadow: 0 18px 40px -24px rgba(18,27,48,.7); }
+    .fids-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+                 padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .fids-title { display: flex; align-items: center; gap: 14px; }
+    .fids-title .pict { width: 44px; height: 44px; border-radius: 8px; background: var(--signal); display: grid; place-items: center; }
+    .fids-title svg { width: 28px; height: 28px; }
+    .fids-title h2 { margin: 0; font-size: 34px; line-height: 1; letter-spacing: -.02em; }
+    .fids-title h2 small { font-size: 18px; font-weight: 300; color: var(--navy-ink); margin-left: 8px; letter-spacing: 0; }
+    .clock { text-align: right; color: var(--navy-ink); font-size: 14px; }
+    .clock b { display: block; color: var(--signal); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums;
+               letter-spacing: .02em; }
 
-    .notice { margin-top: 16px; padding: 12px 14px; border-radius: 9px; font-size: 14px; }
-    .notice.ok { background: #e6ecf7; }
-    .notice.warn { background: #fff4d1; color: var(--signal-ink); border-left: 4px solid var(--signal); }
-    .notice.error { background: #fbe9e7; color: var(--danger); }
-    .notice ul { margin: 6px 0 0; padding-left: 18px; }
+    .rows { margin-top: 6px; }
+    .row, .cols { display: grid; grid-template-columns: 118px 118px minmax(0, 1fr) 76px 132px; gap: 18px; align-items: center; }
+    .cols { padding: 12px 4px 6px; color: var(--navy-ink); font-size: 13px; }
+    .row { padding: 7px 4px; border-top: 1px solid rgba(255,255,255,.06); color: inherit; text-decoration: none; border-radius: 6px; }
+    a.row:hover { background: rgba(255,255,255,.04); }
+    a.row:focus-visible { outline-offset: 0; }
 
-    /* 일정 영역 */
-    .schedule-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-                     margin-bottom: 18px; flex-wrap: wrap; }
-    .schedule-head h2 { margin: 0; font-size: 18px; font-weight: 700; }
-    .filter { display: flex; align-items: center; gap: 8px; }
-    .filter input { width: auto; padding: 7px 10px; font-size: 14px; }
-    .filter button { border: 0; background: none; color: var(--sub); cursor: pointer; font-size: 13px; text-decoration: underline; }
+    /* 글자판 한 칸 — 가운데 이음매와 위아래 그늘 */
+    .flaps { display: flex; gap: 3px; min-width: 0; overflow: hidden; }
+    .flaps i { font-style: normal; width: 21px; height: 32px; flex: none; border-radius: 3px; background: var(--flap);
+               display: grid; place-items: center; font-weight: 700; font-size: 17px; color: #f4f1e6;
+               position: relative; overflow: hidden;
+               background-image: linear-gradient(180deg, rgba(255,255,255,.05) 0 50%, rgba(0,0,0,.18) 50% 100%); }
+    .flaps i::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgba(0,0,0,.55); }
+    .flaps.wide i { width: 28px; font-size: 18px; }           /* 한글 목적지 */
+    .flaps i.tick { animation: flip .09s ease-in; }
+    @keyframes flip { from { transform: scaleY(.25); filter: brightness(1.6); } }
+    .flaps i.blank, .row.gone .flaps i.blank { color: transparent; }
 
-    /* 하루 = 날짜 머리 + 시간표 */
-    .day { margin-bottom: 36px; }
-    .day-head { display: flex; align-items: baseline; gap: 14px; padding-bottom: 10px;
-                border-bottom: 2px solid var(--navy); }
-    .day-date { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-    .day-meta { color: var(--sub); font-size: 14px; }
-    .day-meta strong { color: var(--navy); font-weight: 600; }
+    .status { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+    .status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; flex: none; }
+    .status.boarding { color: #5ed29a; }
+    .status.today { color: var(--signal); }
+    .status.today::before { animation: lamp 1.1s steps(2) infinite; }
+    @keyframes lamp { 50% { opacity: .2; } }
+    .status.clash { color: var(--signal); }
+    .status.later { color: #9fb0d0; }
+    .status.gone { color: #66728c; }
+    .row.gone .flaps i { color: #8c95a8; }
+    .fids-foot { margin: 12px 4px 0; color: var(--navy-ink); font-size: 14px; min-height: 22px; }
+    .fids-foot code { background: rgba(255,255,255,.1); color: #fff; }
+    .fids-foot a { color: var(--signal); }
 
-    .timeline { position: relative; margin: 22px 0 0 56px; }
-    .hour { position: absolute; left: -56px; right: 0; height: 0; border-top: 1px solid var(--rule); }
-    .hour span { position: absolute; left: 0; top: -10px; width: 46px; font-size: 13px; color: var(--sub);
-                 font-variant-numeric: tabular-nums; background: var(--fog); }
+    /* ── 다음 출발 + 탑승 동선 ── */
+    .floor { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; margin-top: 28px; align-items: start; }
+    .ops { min-width: 0; background: var(--paper); border-radius: 14px; padding: 20px 22px; }
+    .ops h3 { margin: 0 0 12px; font-size: 16px; }
+    .next { border: 2px solid var(--terminal); border-radius: 10px; padding: 12px 14px; display: flex; justify-content: space-between;
+            align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+    .next:hover { background: var(--fog); }
+    .next small { color: var(--sub); display: block; font-size: 13px; }
+    .next b { font-size: 20px; letter-spacing: -.01em; }
+    .dday { background: var(--terminal); color: var(--signal); font-weight: 700; border-radius: 7px; padding: 6px 10px;
+            font-variant-numeric: tabular-nums; font-size: 18px; white-space: nowrap; }
+    .counts { display: grid; grid-template-columns: repeat(3, 1fr); margin: 14px 0 4px; text-align: center; }
+    .counts div + div { border-left: 1px solid var(--rule); }
+    .counts b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+    .counts span { font-size: 12px; color: var(--sub); }
+    .counts .warn b { color: #b07a00; }
+    .recent { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--rule); }
+    .recent li a { min-width: 0; display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; color: inherit; text-decoration: none;
+                   font-size: 14px; }
+    .recent li a:hover b { text-decoration: underline; }
+    .recent b { min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .recent span { color: var(--sub); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .recent h4 { margin: 0 0 4px; font-size: 13px; color: var(--sub); font-weight: 600; }
 
-    .block { position: absolute; border: 0; text-align: left; cursor: pointer; overflow: hidden;
-             background: var(--paper); border-radius: 10px; padding: 8px 12px 8px 14px;
-             box-shadow: inset 4px 0 0 var(--navy), 0 1px 2px rgba(28,44,76,.12);
-             display: flex; flex-direction: column; gap: 1px; }
-    .block:hover { box-shadow: inset 4px 0 0 var(--navy), 0 0 0 1.5px var(--navy); }
-    .block .t { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
-    .block .p { font-size: 15px; font-weight: 600; line-height: 1.3; }
-    .block .m { font-size: 13px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .block.short { flex-direction: row; align-items: center; gap: 10px; padding-top: 4px; padding-bottom: 4px; }
-    .block.short .m { display: none; }
-    .block.clash { background: #fff7dc; box-shadow: inset 4px 0 0 var(--signal), 0 1px 2px rgba(92,67,0,.15); }
-    .block.clash:hover { box-shadow: inset 4px 0 0 var(--signal), 0 0 0 1.5px var(--signal-ink); }
-    .block.editing { box-shadow: inset 4px 0 0 var(--navy), 0 0 0 2.5px var(--navy); }
-    .block.flash { animation: flash 1.2s ease-out; }
-    @keyframes flash { from { background: var(--signal); } }
-    @media (prefers-reduced-motion: reduce) { .block.flash { animation: none; } }
+    /* ── 탑승 동선 ── */
+    .route-map { background: var(--paper); border-radius: 14px; padding: 24px 26px; }
+    .route-map h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: -.01em; }
+    .route-map > p { margin: 0 0 22px; color: var(--sub); }
+    .gates { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px 0; position: relative; }
+    .gates li { position: relative; padding-right: 16px; }
+    .gates li::before { content: ""; position: absolute; left: 52px; right: 8px; top: 21px; border-top: 3px dotted var(--rule); }
+    .gates li:nth-child(3n)::before, .gates li:last-child::before { display: none; }
+    .gate-no { width: 44px; height: 44px; border-radius: 8px; background: var(--terminal); color: var(--signal); display: grid;
+               place-items: center; font-weight: 700; font-size: 16px; position: relative; }
+    .gates li:last-child .gate-no { background: var(--signal); color: var(--terminal); }
+    .gates b { display: block; margin: 12px 0 2px; font-size: 16px; }
+    .gates p { margin: 0; color: var(--sub); font-size: 14px; line-height: 1.5; }
 
-    .empty { background: var(--paper); border-radius: 14px; padding: 48px 24px; text-align: center; color: var(--sub); }
-    .empty b { display: block; color: var(--navy); font-size: 17px; margin-bottom: 4px; }
+    @media (max-width: 980px) {
+      .floor { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 720px) {
+      .row, .cols { grid-template-columns: 100px minmax(0, 1fr) 92px; gap: 8px; }
+      .row > :nth-child(2), .row > :nth-child(4), .cols > :nth-child(2), .cols > :nth-child(4) { display: none; }
+      .flaps i { width: 17px; height: 28px; font-size: 14px; } .flaps.wide i { width: 22px; font-size: 15px; }
+      .fids { padding: 18px 16px; } .fids-title h2 { font-size: 26px; } .fids-title h2 small { display: none; } .clock b { font-size: 26px; }
+      .gates { grid-template-columns: 1fr 1fr; } .gates li::before { display: none; }
+    }
   </style>
 </head>
 <body>
-  <header class="board">
-    <div class="board-inner">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="#1c2c4c"><path d="M21 15.5v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V18l-2 1.5V21l3.5-1 3.5 1v-1.5L13 18v-5z"/></svg>
-        </div>
-        <h1>TripPlanner</h1>
+  <header id="board" data-page="home"></header>
+
+  <section class="hero" aria-labelledby="heroTitle">
+    <div class="scene" aria-hidden="true" id="scene">
+      <div class="glow"></div>
+      <div class="cloud" style="top:14%;width:420px;animation-duration:90s;animation-delay:-20s"></div>
+      <div class="cloud" style="top:32%;width:300px;animation-duration:70s;animation-delay:-55s"></div>
+      <div class="cloud" style="top:52%;width:520px;animation-duration:120s;animation-delay:-80s;opacity:.35"></div>
+      <div class="takeoff"><span class="contrail"></span><span class="contrail b"></span><span id="heroLiner"></span></div>
+      <div class="ground"></div>
+      <div class="bldg terminal-bldg"></div>
+      <div class="bldg tower">
+        <svg viewBox="0 0 70 180" preserveAspectRatio="none"><path fill="#0b1226" d="M30 180V62h10v118zM14 40h42l-6 22H20zM18 26h34v14H18zM33 6h4v20h-4z"/>
+          <path fill="rgba(140,200,255,.55)" d="M20 29h30v8H20z"/><circle class="beacon" cx="35" cy="6" r="3" fill="#ff5a4e"/></svg>
       </div>
-      <div class="summary" aria-live="polite">
-        <div><b id="sumDays">0</b><span>여행 날짜</span></div>
-        <div><b id="sumPlans">0</b><span>일정</span></div>
-        <div id="sumClashWrap"><b id="sumClash">0</b><span>시간 겹침</span></div>
-      </div>
+      <div class="runway"></div>
+      <div class="centerline"></div>
     </div>
-  </header>
+    <div class="hero-inner">
+      <h1 id="heroTitle">어디로, 언제 떠나세요?</h1>
+      <p class="lead">여행지와 날짜, 시간대를 적어 주세요. 후보 장소와 그날 날씨, 내 약속을 확인해 하루 일정을 탑승권으로 발권해 드려요.</p>
+      <form class="ticket-form" id="ticketForm">
+        <textarea id="q" rows="2" maxlength="500" aria-label="여행 요청"
+                  placeholder="예: 다음 주 토요일 오사카, 오후에 야외 위주로. 비 오면 곤란해"></textarea>
+        <button type="submit">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 15.5v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V18l-2 1.5V21l3.5-1 3.5 1v-1.5L13 18v-5z"/></svg>
+          발권
+        </button>
+      </form>
+      <div class="samples" id="samples"></div>
+    </div>
+  </section>
 
   <main>
-    <section class="panel" aria-labelledby="formTitle">
-      <h2 id="formTitle">일정 추가</h2>
-      <p class="hint" id="formHint">시간이 겹쳐도 저장되고, 겹치는 일정을 알려 드려요.</p>
-      <form id="form">
-        <label for="place_name">장소</label>
-        <input id="place_name" required maxlength="100" placeholder="예: 오사카성" autocomplete="off" />
-        <label for="city">도시</label>
-        <input id="city" required maxlength="50" placeholder="예: 오사카" autocomplete="off" />
-        <label for="visit_date">날짜</label>
-        <input id="visit_date" type="date" required />
-        <div class="pair">
-          <div><label for="start_time">시작</label><input id="start_time" type="time" required /></div>
-          <div><label for="end_time">종료</label><input id="end_time" type="time" required /></div>
+    <section class="fids" aria-labelledby="fidsTitle">
+      <div class="fids-head">
+        <div class="fids-title">
+          <span class="pict" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="#121b30"><path d="M2.5 19h19v2h-19z"/><path d="M22.1 9.6c-.2-.8-1-1.3-1.8-1.1L15 9.9 8.1 3.5l-1.9.5 4.1 7.2-5 1.3-2-1.5-1.5.4 2.6 4.5 16.9-4.5c.8-.2 1.3-1 1.1-1.8z"/></svg>
+          </span>
+          <h2 id="fidsTitle">출발<small>저장한 여행 일정</small></h2>
         </div>
-        <label for="memo">메모</label>
-        <textarea id="memo" maxlength="300" placeholder="선택 사항"></textarea>
-        <div class="actions">
-          <button class="btn primary" type="submit" id="submitBtn">일정 저장</button>
-          <button class="btn danger" type="button" id="deleteBtn" hidden>삭제</button>
-          <button class="btn" type="button" id="cancelBtn" hidden>취소</button>
-        </div>
-      </form>
-      <div id="message" role="status"></div>
+        <div class="clock" aria-live="off"><b id="clock">--:--</b><span id="today"></span></div>
+      </div>
+      <div class="cols" aria-hidden="true"><span>날짜</span><span>출발 시각</span><span>목적지</span><span>장소</span><span>상태</span></div>
+      <div class="rows" id="rows"></div>
+      <p class="fids-foot" id="fidsFoot"></p>
     </section>
 
-    <section aria-labelledby="scheduleTitle">
-      <div class="schedule-head">
-        <h2 id="scheduleTitle">여행 일정</h2>
-        <div class="filter">
-          <input id="filterDate" type="date" aria-label="날짜로 거르기" />
-          <button type="button" id="clearFilter" hidden>전체 보기</button>
+    <div class="floor">
+      <section class="route-map" aria-labelledby="routeTitle">
+        <h2 id="routeTitle">탑승까지 이렇게 진행돼요</h2>
+        <p>요청 하나가 아래 순서를 지나 탑승권이 돼요. 단계마다 한 일은 대화 화면 오른쪽 '실행 과정'에 남아요.</p>
+        <ol class="gates">
+          <li><span class="gate-no">1</span><b>요청 분석</b><p>여행지 · 날짜 · 시간 · 야외/실내를 읽고 부를 Tool 을 골라요.</p></li>
+          <li><span class="gate-no">2</span><b>후보 장소</b><p>목적지 주변 명소를 찾고, 없으면 반경을 넓혀 다시 찾아요.</p></li>
+          <li><span class="gate-no">3</span><b>그날 날씨</b><p>강수확률이 50%를 넘으면 비 오는 날로 봐요.</p></li>
+          <li><span class="gate-no">4</span><b>내 약속</b><p>캘린더 약속 시간을 비워 두고 남는 시간에 배치해요.</p></li>
+          <li><span class="gate-no">5</span><b>판단 · 재계획</b><p>비 예보나 시간 부족이면 실내 후보 · 장소 수를 바꿔 최대 3번 다시 짜요.</p></li>
+          <li><span class="gate-no">6</span><b>탑승권 발권</b><p>장소별 시각 · 체류 · 도보 시간을 담은 탑승권을 드리고 저장할 수 있어요.</p></li>
+        </ol>
+      </section>
+
+      <aside class="ops" aria-labelledby="opsTitle">
+        <h3 id="opsTitle">다음 출발</h3>
+        <div id="next"></div>
+        <div class="counts">
+          <div><b id="cDays">–</b><span>여행 날짜</span></div>
+          <div><b id="cPlaces">–</b><span>저장한 장소</span></div>
+          <div id="cClashWrap"><b id="cClash">–</b><span>시간 겹침</span></div>
         </div>
-      </div>
-      <div id="list"></div>
-    </section>
+        <ul class="recent" id="recent"></ul>
+      </aside>
+    </div>
+
   </main>
 
+  <script src="common.js?v=3"></script>
   <script>
-    const API = "http://localhost:8000/api/plans";
-    const FIELDS = ["place_name", "city", "visit_date", "start_time", "end_time", "memo"];
     const $ = (id) => document.getElementById(id);
-    const HOUR_PX = 64;            // CSS --hour 와 같은 값
-    const MIN_BLOCK = 34;          // 아주 짧은 일정도 글자가 보이게
-    let editingId = null;
-    let plansById = {};
-    let flashId = null;            // 방금 저장 · 수정한 일정 — 잠깐 노랗게 반짝인다
-
-    const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-    const hm = (t) => t.slice(0, 5);
+    const SAMPLES = [
+      ["오사카", "다음 주 토요일 오사카, 오후에 야외 위주로 돌고 싶어. 비 오면 곤란해"],
+      ["종로", "이번 주말 서울 종로에서 2시부터 6시까지, 저녁 먹을 곳도 알려줘"],
+      ["해운대", "내일 부산 해운대 날씨 어때?"],
+      ["추천", "가을에 가기 좋은 일본 미식 여행지 추천해줘"],
+    ];
+    const MIN_ROWS = 5;
+    const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const FLAP_POOL = "ABCDEFGHJKLMNPRSTUVWXYZ0123456789가나다라마바사아자차카타파하";
     const toMin = (t) => +t.slice(0, 2) * 60 + +t.slice(3, 5);
-    const dayParts = (d) => {
-      const dt = new Date(d + "T00:00");
-      return { date: `${dt.getMonth() + 1}월 ${dt.getDate()}일`,
-               week: dt.toLocaleDateString("ko-KR", { weekday: "long" }), year: dt.getFullYear() };
-    };
+    const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-    function show(kind, html) {
-      $("message").innerHTML = html ? `<div class="notice ${kind}">${html}</div>` : "";
-    }
+    renderBoard();
+    drawScene();
 
-    async function errorText(res) {
-      if (res.status === 404) return "이미 삭제된 일정입니다. 목록을 새로 불러왔어요.";
-      if (res.status === 422) {
-        const body = await res.json().catch(() => null);
-        const msg = body?.detail?.[0]?.msg ?? "";
-        return msg.includes("end_time") ? "종료 시각을 시작 시각보다 늦게 정해 주세요." : "입력값을 다시 확인해 주세요.";
+    // ── 첫 화면 장면: 별, 활주로 가장자리 등, 여객기 ──
+    function drawScene() {
+      const sc = $("scene");
+      let html = "";
+      for (let k = 0; k < 46; k++) {
+        const x = Math.random() * 100, y = Math.random() * 52, sz = Math.random() < .2 ? 3 : 2;
+        html += `<i class="star" style="left:${x}%;top:${y}%;width:${sz}px;height:${sz}px;animation-delay:${(-Math.random() * 3).toFixed(2)}s;opacity:${(.4 + Math.random() * .6).toFixed(2)}"></i>`;
       }
-      return "서버가 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.";
+      // 활주로 양쪽 가장자리: 아래(가까운 쪽)에서 위(먼 쪽)로 갈수록 작아지고 순서대로 깜빡인다
+      const N = 11;
+      for (const side of [-1, 1]) for (let k = 0; k < N; k++) {
+        const t = k / (N - 1), y = t * 158;
+        const half = 750 - (750 - 60) * t;                       // 활주로 반폭(px): 750 → 60
+        const size = 8 - 5.5 * t;
+        html += `<i class="edge" style="left:calc(50% + ${side * half}px);bottom:${y}px;width:${size}px;height:${size}px;animation-delay:${(t * 1.2).toFixed(2)}s"></i>`;
+      }
+      sc.insertAdjacentHTML("beforeend", html);
+      $("heroLiner").outerHTML = LINER;
     }
 
-    async function loadPlans() {
-      const d = $("filterDate").value;
-      $("clearFilter").hidden = !d;
+    // ── 시계 ──
+    function tick() {
+      const now = new Date();
+      $("clock").textContent = now.toTimeString().slice(0, 5);
+      $("today").textContent = now.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+    }
+    tick(); setInterval(tick, 10_000);
+
+    // ── 체크인 카운터 → 대화 화면으로 넘겨 바로 보낸다 ──
+    $("samples").innerHTML = SAMPLES.map(([k, v]) => `<button type="button" data-q="${esc(v)}"><b>${k}</b>${esc(v)}</button>`).join("");
+    $("samples").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => go(b.dataset.q)));
+    $("ticketForm").addEventListener("submit", (e) => { e.preventDefault(); go($("q").value); });
+    $("q").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); go($("q").value); }
+    });
+    function go(text) {
+      text = (text || "").trim();
+      if (!text) { $("q").focus(); return; }
+      location.href = `chat.html?q=${encodeURIComponent(text)}`;
+    }
+
+    // ── 글자판 ──
+    // 칸마다 무작위 글자를 몇 번 넘긴 뒤 제 글자에 멈춘다. 왼쪽 칸부터, 위쪽 줄부터 늦게 멈춘다.
+    const flips = [];
+    function flaps(text, cells, cls = "") {
+      const chars = [...String(text)].slice(0, cells);
+      while (chars.length < cells) chars.push(" ");
+      return `<span class="flaps ${cls}" aria-hidden="true">${chars.map((c) =>
+        `<i data-c="${esc(c)}" class="${c === " " ? "blank" : ""}">${c === " " ? "·" : esc(c)}</i>`).join("")}</span>`;
+    }
+    function runFlips() {
+      const cells = [...document.querySelectorAll(".flaps i")];
+      if (REDUCED) return;
+      const rowsEls = [...document.querySelectorAll("#rows .row")];
+      const jobs = cells.map((el) => {
+        const row = rowsEls.indexOf(el.closest(".row"));
+        const col = [...el.parentElement.parentElement.querySelectorAll(".flaps i")].indexOf(el);
+        return { el, final: el.dataset.c, left: 4 + row * 3 + Math.floor(col * 0.9) + Math.floor(Math.random() * 3) };
+      });
+      jobs.forEach((j) => { if (j.final !== " ") j.el.classList.remove("blank"); });
+      const timer = setInterval(() => {
+        let alive = 0;
+        for (const j of jobs) {
+          if (j.left < 0) continue;
+          alive++;
+          j.el.classList.remove("tick"); void j.el.offsetWidth; j.el.classList.add("tick");
+          if (j.left === 0) {
+            j.el.textContent = j.final === " " ? "·" : j.final;
+            j.el.classList.toggle("blank", j.final === " ");
+            const el = j.el; setTimeout(() => el.classList.remove("tick"), 120);
+          } else {
+            j.el.textContent = FLAP_POOL[Math.floor(Math.random() * FLAP_POOL.length)];
+          }
+          j.left--;
+        }
+        if (!alive) clearInterval(timer);
+      }, 70);
+    }
+
+    // 같은 날 · 같은 도시 일정을 '항공편' 하나로 묶는다
+    function flights(plans) {
+      const by = {};
+      for (const p of plans) (by[`${p.visit_date}|${p.city}`] ??= []).push(p);
+      return Object.values(by).map((items) => {
+        items.sort((a, b) => toMin(a.start_time) - toMin(b.start_time));
+        let clash = false;
+        for (let i = 1; i < items.length; i++) if (toMin(items[i].start_time) < toMin(items[i - 1].end_time)) clash = true;
+        return { date: items[0].visit_date, city: items[0].city, start: hm(items[0].start_time), places: items.length, clash };
+      }).sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
+    }
+
+    function statusOf(f, today) {
+      const days = Math.round((new Date(f.date + "T00:00") - new Date(today + "T00:00")) / 86_400_000);
+      if (days < 0) return ["gone", "출발 완료", days];
+      if (f.clash) return ["clash", "시간 겹침", days];
+      if (days === 0) return ["today", "오늘 출발", days];
+      if (days <= 7) return ["boarding", "탑승 준비", days];
+      return ["later", "예정", days];
+    }
+
+    function blankRow() {
+      return `<div class="row">${flaps("", 5)}${flaps("", 5)}${flaps("", 7, "wide")}${flaps("", 3)}<span></span></div>`;
+    }
+
+    async function loadBoard() {
+      const today = iso(new Date());
+      let plans;
       try {
-        const res = await fetch(API + (d ? `?visit_date=${d}` : ""));
+        const res = await fetch(`${API_BASE}/api/plans`);
         if (!res.ok) throw new Error();
-        render(await res.json());
+        plans = await res.json();
       } catch {
-        setSummary([], 0);
-        $("list").innerHTML = `<div class="empty"><b>서버에 연결할 수 없어요</b>
-          TripPlanner 폴더에서 <code>uvicorn app.main:app --reload</code> 로 서버를 켠 뒤 새로고침하세요.</div>`;
-      }
-    }
-
-    // 같은 날 일정들을 겹치지 않는 줄(lane)에 나눠 담는다. 겹치는 묶음끼리만 폭을 나눈다.
-    function layout(items) {
-      const sorted = [...items].sort((a, b) => toMin(a.start_time) - toMin(b.start_time) || toMin(a.end_time) - toMin(b.end_time));
-      const groups = [];
-      let group = null, groupEnd = -1;
-      for (const p of sorted) {
-        const s = toMin(p.start_time), e = toMin(p.end_time);
-        if (!group || s >= groupEnd) { group = { items: [], lanes: [] }; groups.push(group); groupEnd = e; }
-        groupEnd = Math.max(groupEnd, e);
-        let lane = group.lanes.findIndex((end) => end <= s);
-        if (lane === -1) { lane = group.lanes.length; group.lanes.push(e); } else group.lanes[lane] = e;
-        group.items.push({ p, lane });
-      }
-      const out = [];
-      for (const g of groups)
-        for (const { p, lane } of g.items)
-          out.push({ p, lane, lanes: g.lanes.length, clash: g.lanes.length > 1 && g.items.some((o) =>
-            o.p !== p && toMin(o.p.start_time) < toMin(p.end_time) && toMin(p.start_time) < toMin(o.p.end_time)) });
-      return out;
-    }
-
-    function setSummary(plans, clashCount) {
-      $("sumDays").textContent = new Set(plans.map((p) => p.visit_date)).size;
-      $("sumPlans").textContent = plans.length;
-      $("sumClash").textContent = clashCount;
-      $("sumClashWrap").classList.toggle("warn", clashCount > 0);
-    }
-
-    function render(plans) {
-      plansById = Object.fromEntries(plans.map((p) => [p.plan_id, p]));
-      if (!plans.length) {
-        setSummary([], 0);
-        $("list").innerHTML = $("filterDate").value
-          ? `<div class="empty"><b>이 날짜에는 일정이 없어요</b>전체 보기로 돌아가거나 이 날짜에 일정을 추가해 보세요.</div>`
-          : `<div class="empty"><b>아직 저장한 일정이 없어요</b>왼쪽에서 첫 일정을 추가하면 여기에 하루 시간표로 그려져요.</div>`;
+        $("rows").innerHTML = `<div class="row">${flaps("--.--", 5)}${flaps("--:--", 5)}${flaps("연결 안 됨", 7, "wide")}${flaps("", 3)}
+          <span class="status clash">서버 꺼짐</span></div>` + blankRow().repeat(MIN_ROWS - 1);
+        $("fidsFoot").innerHTML = `서버에 연결할 수 없어요. TripPlanner 폴더의 <code>start.bat</code> 를 실행하거나
+          <code>uvicorn app.main:app --reload</code> 로 서버를 켠 뒤 새로고침하세요.`;
+        runFlips(); summary([], []);
         return;
       }
-      const byDay = {};
-      plans.forEach((p) => (byDay[p.visit_date] ??= []).push(p));
-      let clashCount = 0;
+      const all = flights(plans);
+      // 다가올 항공편을 먼저, 지나간 것은 뒤에 가장 최근 것만
+      const upcoming = all.filter((f) => f.date >= today);
+      const past = all.filter((f) => f.date < today).reverse();
+      const shown = [...upcoming, ...past].slice(0, 8);
 
-      $("list").innerHTML = Object.entries(byDay).map(([day, items]) => {
-        const placed = layout(items);
-        clashCount += placed.filter((x) => x.clash).length;
-        const startH = Math.floor(Math.min(...items.map((p) => toMin(p.start_time))) / 60);
-        let endH = Math.ceil(Math.max(...items.map((p) => toMin(p.end_time))) / 60);
-        if (endH - startH < 3) endH = startH + 3;
-        const cities = [...new Set(items.map((p) => p.city))];
-        const { date, week } = dayParts(day);
-
-        const hours = Array.from({ length: endH - startH + 1 }, (_, i) =>
-          `<div class="hour" style="top:${i * HOUR_PX}px"><span>${String(startH + i).padStart(2, "0")}:00</span></div>`).join("");
-
-        const blocks = placed.map(({ p, lane, lanes, clash }) => {
-          const top = (toMin(p.start_time) - startH * 60) / 60 * HOUR_PX;
-          const h = Math.max((toMin(p.end_time) - toMin(p.start_time)) / 60 * HOUR_PX - 4, MIN_BLOCK);
-          const w = 100 / lanes;
-          const cls = ["block", clash && "clash", h < 56 && "short",
-                       p.plan_id === editingId && "editing", p.plan_id === flashId && "flash"].filter(Boolean).join(" ");
-          return `<button type="button" class="${cls}" onclick="startEdit(${p.plan_id})"
-                    style="top:${top + 2}px;height:${h}px;left:calc(${lane * w}% + ${lane ? 4 : 0}px);width:calc(${w}% - ${lanes > 1 ? 4 : 0}px)"
-                    aria-label="${esc(p.place_name)}, ${hm(p.start_time)}부터 ${hm(p.end_time)}까지${clash ? ", 시간 겹침" : ""}. 눌러서 수정">
-                    <span class="t">${hm(p.start_time)}–${hm(p.end_time)}</span>
-                    <span class="p">${esc(p.place_name)}</span>
-                    ${p.memo ? `<span class="m">${esc(p.memo)}</span>` : ""}
-                  </button>`;
-        }).join("");
-
-        return `<article class="day">
-            <div class="day-head">
-              <span class="day-date">${date}</span>
-              <span class="day-meta">${week}, <strong>${esc(cities.join(", "))}</strong>에서 일정 ${items.length}개</span>
-            </div>
-            <div class="timeline" style="height:${(endH - startH) * HOUR_PX}px">${hours}${blocks}</div>
-          </article>`;
+      const rowsHtml = shown.map((f) => {
+        const [cls, label] = statusOf(f, today);
+        const md = f.date.slice(5).replace("-", ".");
+        const wide = /[가-힣ぁ-んァ-ン一-龥]/.test(f.city);
+        return `<a class="row ${cls === "gone" ? "gone" : ""}" href="plans.html?date=${f.date}"
+                   aria-label="${md} ${f.start} ${esc(f.city)}, 장소 ${f.places}곳, ${label}. 내 일정에서 보기">
+          ${flaps(md, 5)}${flaps(f.start, 5)}${flaps(f.city, wide ? 7 : 10, wide ? "wide" : "")}${flaps(f.places + "곳", 3)}
+          <span class="status ${cls}">${label}</span></a>`;
       }).join("");
-
-      setSummary(plans, clashCount);
-      flashId = null;
+      $("rows").innerHTML = rowsHtml + blankRow().repeat(Math.max(0, MIN_ROWS - shown.length));
+      $("fidsFoot").innerHTML = !all.length
+        ? "아직 출발 예정이 없어요. 아래 체크인 카운터에서 첫 일정을 발권해 보세요."
+        : all.length > shown.length ? `${all.length - shown.length}편 더 있어요. <a href="plans.html">내 일정에서 전체 보기</a>`
+        : "줄을 누르면 그날 시간표로 이동해요.";
+      runFlips();
+      summary(plans, upcoming);
     }
 
-    function startEdit(id) {
-      const p = plansById[id];
-      editingId = id;
-      FIELDS.forEach((f) => ($(f).value = f.endsWith("_time") ? hm(p[f]) : p[f] ?? ""));
-      $("formTitle").textContent = "일정 수정";
-      $("formHint").textContent = `${p.place_name} 일정을 고치거나 삭제할 수 있어요.`;
-      $("submitBtn").textContent = "수정 저장";
-      $("deleteBtn").hidden = false;
-      $("cancelBtn").hidden = false;
-      show("", "");
-      document.querySelectorAll(".block.editing").forEach((b) => b.classList.remove("editing"));
-      loadPlans();
-      $("place_name").focus();
+    function summary(plans, upcoming) {
+      const today = iso(new Date());
+      const nx = upcoming[0];
+      $("next").innerHTML = nx
+        ? `<a class="next" href="plans.html?date=${nx.date}"><div><small>${esc(nx.date.slice(5).replace("-", "월 "))}일 ${nx.start} 출발</small>
+             <b>${esc(nx.city)}</b></div><span class="dday">${statusOf(nx, today)[2] === 0 ? "D-DAY" : "D-" + statusOf(nx, today)[2]}</span></a>`
+        : `<div class="next"><div><small>예정된 여행 없음</small><b>어디든 떠나 볼까요</b></div></div>`;
+      const clashes = flights(plans).filter((f) => f.clash).length;
+      $("cDays").textContent = new Set(plans.map((p) => p.visit_date)).size;
+      $("cPlaces").textContent = plans.length;
+      $("cClash").textContent = clashes;
+      $("cClashWrap").classList.toggle("warn", clashes > 0);
     }
 
-    function resetForm() {
-      editingId = null;
-      $("form").reset();
-      $("formTitle").textContent = "일정 추가";
-      $("formHint").textContent = "시간이 겹쳐도 저장되고, 겹치는 일정을 알려 드려요.";
-      $("submitBtn").textContent = "일정 저장";
-      $("deleteBtn").hidden = true;
-      $("cancelBtn").hidden = true;
-    }
-
-    $("form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const body = Object.fromEntries(FIELDS.map((f) => [f, $(f).value.trim() || null]));
-      const wasEditing = editingId;
-      if (wasEditing) { body.lat = plansById[wasEditing].lat; body.lon = plansById[wasEditing].lon; }
-      let res;
+    // 최근 요청 — 실행 로그 화면으로 바로 연다
+    async function loadRecent() {
       try {
-        res = await fetch(wasEditing ? `${API}/${wasEditing}` : API, {
-          method: wasEditing ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-      } catch { show("error", "서버에 연결할 수 없어요. 서버가 켜져 있는지 확인해 주세요."); return; }
-      if (!res.ok) {
-        show("error", await errorText(res));
-        if (res.status === 404) { resetForm(); loadPlans(); }
-        return;
-      }
-      const { plan, overlaps } = await res.json();
-      const verb = wasEditing ? "수정했어요" : "저장했어요";
-      if (overlaps.length) {
-        show("warn", `<b>${esc(plan.place_name)}</b> 일정을 ${verb}. 같은 날 시간이 겹치는 일정이 있어요.
-          <ul>${overlaps.map((o) => `<li>${hm(o.start_time)}–${hm(o.end_time)} ${esc(o.place_name)}</li>`).join("")}</ul>`);
-      } else {
-        show("ok", `<b>${esc(plan.place_name)}</b> 일정을 ${verb}.`);
-      }
-      flashId = plan.plan_id;
-      resetForm();
-      loadPlans();
-    });
+        const list = await (await fetch(`${API_BASE}/api/logs`)).json();
+        if (!list.length) { $("recent").innerHTML = ""; return; }
+        $("recent").innerHTML = `<h4>최근 요청</h4>` + list.slice(0, 3).map((s) => `
+          <li><a href="logs.html?session=${encodeURIComponent(s.session_id)}">
+            <b>${esc(s.first_message ?? s.session_id)}</b><span>${esc(s.last_ts.slice(5, 16).replace("T", " "))}</span></a></li>`).join("");
+      } catch { $("recent").innerHTML = ""; }
+    }
 
-    $("deleteBtn").addEventListener("click", async () => {
-      const id = editingId, name = plansById[id]?.place_name ?? "";
-      let res;
-      try { res = await fetch(`${API}/${id}`, { method: "DELETE" }); }
-      catch { show("error", "서버에 연결할 수 없어요. 서버가 켜져 있는지 확인해 주세요."); return; }
-      show(res.status === 204 ? "ok" : "error",
-           res.status === 204 ? `<b>${esc(name)}</b> 일정을 삭제했어요.` : await errorText(res));
-      resetForm();
-      loadPlans();
-    });
-
-    $("cancelBtn").addEventListener("click", () => { resetForm(); show("", ""); loadPlans(); });
-    $("filterDate").addEventListener("change", loadPlans);
-    $("clearFilter").addEventListener("click", () => { $("filterDate").value = ""; loadPlans(); });
-    loadPlans();
+    loadBoard();
+    loadRecent();
   </script>
 </body>
 </html>

@@ -1,0 +1,118 @@
+/* 글꼴 — 2회차 TripPilot 과 같은 Y이든스트릿(눈누, Light 300 · Bold 700), 받침 글꼴 Pretendard */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+@font-face { font-family: "Ydestreet"; font-weight: 300; font-style: normal; font-display: swap;
+             src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2110@1.0/YdestreetL.woff2") format("woff2"); }
+@font-face { font-family: "Ydestreet"; font-weight: 700; font-style: normal; font-display: swap;
+             src: url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2110@1.0/YdestreetB.woff2") format("woff2"); }
+
+/* TripPlanner 공통 스타일 — 공항 안내판(남색 · 신호 노랑)
+   노랑은 '주의가 필요한 것'(시간 겹침 · 재계획 · 처리 중)에만 쓴다. */
+:root {
+  --terminal: #121b30;   /* 안내판 바탕 — 남색보다 한 단계 깊다 */
+  --flap: #1d2740;       /* 글자판 한 칸 */
+  --navy: #1c2c4c;
+  --navy-soft: #2e4170;
+  --navy-ink: #b8c3da;
+  --signal: #ffc629;
+  --signal-soft: #fff4d1;
+  --signal-ink: #5c4300;
+  --fog: #eef1f5;
+  --paper: #ffffff;
+  --rule: #d5dbe5;
+  --sub: #5d6880;
+  --ok: #1f7a4d;
+  --danger: #c63b32;
+  --danger-soft: #fbe9e7;
+  --font: "Ydestreet", "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: var(--font); color: var(--navy);
+       background: radial-gradient(1100px 380px at 8% -40px, #d9e2f1, transparent 70%),
+                   radial-gradient(900px 320px at 96% 260px, #e1e8f4, transparent 70%), var(--fog);
+       background-attachment: fixed;
+       font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+button, input, textarea, select { font: inherit; color: inherit; }
+a { color: var(--navy-soft); }
+:focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }
+code { font-size: 0.92em; background: #e4e8ef; padding: 1px 5px; border-radius: 4px; }
+
+/* ── 상단 = 터미널 천장의 안내 표지판 ──
+   화면 이동은 공항 표지판처럼 '그림 표시 + 이름'. 지금 있는 곳만 노란 표지판이 된다. */
+.board { background: var(--terminal); color: #fff; border-bottom: 4px solid var(--signal); }
+.board-inner { max-width: 1200px; margin: 0 auto; padding: 12px 24px;
+               display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #fff; }
+.brand-mark { width: 34px; height: 34px; border-radius: 7px; background: var(--signal); display: grid; place-items: center; }
+.brand-mark svg { width: 20px; height: 20px; }
+.brand b { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+.tabs { display: flex; gap: 6px; }
+.tabs a { display: inline-flex; align-items: center; gap: 9px; color: var(--navy-ink); text-decoration: none;
+          padding: 6px 14px 6px 6px; border-radius: 7px; font-weight: 700; font-size: 15px; }
+.tabs a .pict { width: 28px; height: 28px; border-radius: 5px; display: grid; place-items: center;
+                background: rgba(255,255,255,.08); }
+.tabs a .pict svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2;
+                    stroke-linecap: round; stroke-linejoin: round; }
+.tabs a:hover { color: #fff; background: rgba(255,255,255,.06); }
+.tabs a[aria-current="page"] { background: var(--signal); color: var(--terminal); }
+.tabs a[aria-current="page"] .pict { background: var(--terminal); color: var(--signal); }
+.board-side { margin-left: auto; display: flex; align-items: center; gap: 22px; }
+@media (max-width: 720px) { .tabs a { padding-right: 8px; } .tabs a span.l { display: none; } }
+
+/* 키 상태 */
+.keys { display: flex; gap: 10px; font-size: 13px; color: var(--navy-ink); }
+.keys span { display: inline-flex; align-items: center; gap: 5px; }
+.keys i { width: 8px; height: 8px; border-radius: 50%; background: #5ed29a; }
+.keys .off i { background: var(--signal); }
+.keys .off { color: var(--signal); }
+
+/* ── 공통 부품 ── */
+.btn { border: 1.5px solid var(--rule); background: var(--paper); border-radius: 9px; padding: 9px 14px;
+       font-weight: 600; cursor: pointer; }
+.btn:hover { border-color: var(--navy); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.primary { background: var(--navy); border-color: var(--navy); color: #fff; }
+.btn.primary:hover:not(:disabled) { background: var(--navy-soft); }
+.btn.danger { color: var(--danger); }
+.btn.danger:hover { border-color: var(--danger); }
+.btn.small { padding: 5px 10px; font-size: 13px; }
+
+.notice { padding: 11px 14px; border-radius: 9px; font-size: 14px; }
+.notice.ok { background: #e6ecf7; }
+.notice.warn { background: var(--signal-soft); color: var(--signal-ink); border-left: 4px solid var(--signal); }
+.notice.error { background: var(--danger-soft); color: var(--danger); }
+.notice ul { margin: 6px 0 0; padding-left: 18px; }
+
+.empty { background: var(--paper); border-radius: 14px; padding: 44px 24px; text-align: center; color: var(--sub); }
+.empty b { display: block; color: var(--navy); font-size: 17px; margin-bottom: 4px; }
+
+.badge { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 99px;
+         background: #e4e8ef; color: var(--sub); white-space: nowrap; }
+.badge.ok { background: #e1f3ea; color: var(--ok); }
+.badge.fail { background: var(--danger-soft); color: var(--danger); }
+.badge.warn { background: var(--signal-soft); color: var(--signal-ink); }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+
+/* ── 하늘: 가끔 비행기가 비행운을 끌며 화면을 가로지른다 ──
+   패널 위로 지나가되 클릭은 막지 않는다. 흰색 + difference 섞기라 밝은 바닥에선 어둡게, 어두운 안내판 위에선 밝게 보인다.
+   움직임 줄이기 설정이면 숨긴다. */
+.board { position: relative; z-index: 2; }
+body > main { position: relative; z-index: 1; }
+.sky { position: fixed; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
+.jet { position: absolute; left: 0; top: var(--y); display: flex; align-items: center; opacity: var(--o, .5);
+       transform: translate(-60vw, 0); animation: fly var(--dur) cubic-bezier(.45, 0, .7, 1) var(--delay) infinite; }
+.jet .trail { width: 34vw; height: 3px; border-radius: 3px;
+              background: linear-gradient(90deg, rgba(28,44,76,0), rgba(28,44,76,.18) 70%, rgba(28,44,76,.3)); }
+.jet .trail + .trail { position: absolute; left: 3vw; top: calc(50% + 7px); width: 30vw; height: 2px; opacity: .55; }
+.jet .liner { width: var(--size, 120px); height: auto; flex: none; margin-left: -4px; filter: drop-shadow(0 4px 8px rgba(28,44,76,.35)); }
+.jet .trail { margin-top: calc(var(--size, 120px) * .1); }
+/* 여객기 공통 — 꼬리 섬광등과 날개 끝 항행등이 깜빡인다 */
+.liner .strobe { animation: strobe 1.4s steps(1) infinite; }
+.liner .navlight { animation: strobe 1s steps(1) infinite .3s; }
+@keyframes strobe { 0%, 12% { opacity: 1; } 13%, 100% { opacity: 0; } }
+@keyframes fly {
+  0%        { transform: translate(-60vw, 0) rotate(-6deg); }
+  36%       { transform: translate(115vw, calc(var(--rise) * -1)) rotate(-6deg); }
+  100%      { transform: translate(115vw, calc(var(--rise) * -1)) rotate(-6deg); }   /* 화면 밖에서 쉬었다가 다시 */
+}

@@ -1,0 +1,452 @@
+{
+  "session_id": "c30c004b8db8",
+  "events": [
+    {
+      "id": 1443,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 1,
+      "ts": "2026-11-20T10:35:35.252",
+      "type": "run_start",
+      "node": null,
+      "data": {
+        "message": "다음 주 토요일 오사카, 무조건 야외로만, 비 안 오는 날로. 날짜는 바꾸지 마",
+        "mode": "single"
+      }
+    },
+    {
+      "id": 1444,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 2,
+      "ts": "2026-11-20T10:35:35.261",
+      "type": "node_start",
+      "node": "analyze",
+      "data": {}
+    },
+    {
+      "id": 1445,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 3,
+      "ts": "2026-11-20T10:35:39.082",
+      "type": "llm_call",
+      "node": "analyze",
+      "data": {
+        "purpose": "요청 분석",
+        "ms": 3816
+      }
+    },
+    {
+      "id": 1446,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 4,
+      "ts": "2026-11-20T10:35:39.088",
+      "type": "decision",
+      "node": "analyze",
+      "data": {
+        "kind": "intent",
+        "intent": "plan_trip",
+        "reason": "오사카 여행지에서 야외 장소 중심의 하루 일정을 원하므로 plan_trip이며, 장소 후보를 먼저 찾아야 비 예보 확인(get_weather)에 좌표를 쓸 수 있다.",
+        "changed": [
+          "destination",
+          "visit_date",
+          "date_fixed",
+          "style",
+          "outdoor_only"
+        ],
+        "conditions": {
+          "destination": "오사카",
+          "visit_date": "2026-11-28",
+          "date_fixed": true,
+          "style": "outdoor",
+          "outdoor_only": true
+        },
+        "assumptions": [
+          "'다음 주 토요일'을 오늘(금요일 2026-11-20) 기준 다음 주 월요일이 속한 주의 토요일인 2026-11-28로 해석",
+          "'무조건 야외로만'은 실내 장소로 바꾸지 않는다는 뜻으로 해석",
+          "'비 안 오는 날로'는 날짜 변경이 아니라 해당 날짜의 강수 여부를 확인해 달라는 조건으로 해석 (날짜는 고정)"
+        ],
+        "tools": [
+          "search_places"
+        ]
+      }
+    },
+    {
+      "id": 1447,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 5,
+      "ts": "2026-11-20T10:35:39.092",
+      "type": "node_end",
+      "node": "analyze",
+      "data": {
+        "ms": 3825,
+        "summary": {
+          "intent": "plan_trip",
+          "clarify": false
+        }
+      }
+    },
+    {
+      "id": 1448,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 6,
+      "ts": "2026-11-20T10:35:39.097",
+      "type": "node_start",
+      "node": "plan",
+      "data": {}
+    },
+    {
+      "id": 1449,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 7,
+      "ts": "2026-11-20T10:35:39.102",
+      "type": "tool_call",
+      "node": "plan",
+      "data": {
+        "tool": "geocode",
+        "args": {
+          "destination": "오사카"
+        },
+        "flow": true
+      }
+    },
+    {
+      "id": 1450,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 8,
+      "ts": "2026-11-20T10:35:39.107",
+      "type": "tool_result",
+      "node": "plan",
+      "data": {
+        "tool": "geocode",
+        "ok": true,
+        "ms": 0,
+        "flow": true,
+        "brief": "오사카시, 일본"
+      }
+    },
+    {
+      "id": 1451,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 9,
+      "ts": "2026-11-20T10:35:39.111",
+      "type": "decision",
+      "node": "plan",
+      "data": {
+        "kind": "tool_choice",
+        "llm_tools": [
+          "search_places"
+        ],
+        "final": [
+          "search_places",
+          "get_weather",
+          "get_schedule"
+        ],
+        "added": [
+          "get_weather",
+          "get_schedule"
+        ],
+        "dropped": [],
+        "reason": "LLM 선택을 코드가 보정"
+      }
+    },
+    {
+      "id": 1452,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 10,
+      "ts": "2026-11-20T10:35:39.115",
+      "type": "decision",
+      "node": "plan",
+      "data": {
+        "kind": "plan",
+        "steps": [
+          "search_places",
+          "get_weather",
+          "get_schedule"
+        ],
+        "args": [
+          {
+            "tool": "search_places",
+            "args": {
+              "destination": "오사카",
+              "style": "outdoor",
+              "limit": 10,
+              "radius_m": 5000
+            }
+          },
+          {
+            "tool": "get_weather",
+            "args": {
+              "lat": 34.6937569,
+              "lon": 135.5014539,
+              "visit_date": "2026-11-28"
+            }
+          },
+          {
+            "tool": "get_schedule",
+            "args": {
+              "visit_date": "2026-11-28"
+            }
+          }
+        ],
+        "reason": "볼 장소를 정하지 않았으므로 후보 조회 → 그날 날씨 확인 → 그날 내 일정 조회(빈 시간 계산)"
+      }
+    },
+    {
+      "id": 1453,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 11,
+      "ts": "2026-11-20T10:35:39.119",
+      "type": "node_end",
+      "node": "plan",
+      "data": {
+        "ms": 17,
+        "summary": {
+          "steps": [
+            "search_places",
+            "get_weather",
+            "get_schedule"
+          ]
+        }
+      }
+    },
+    {
+      "id": 1454,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 12,
+      "ts": "2026-11-20T10:35:39.125",
+      "type": "node_start",
+      "node": "execute",
+      "data": {}
+    },
+    {
+      "id": 1455,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 13,
+      "ts": "2026-11-20T10:35:39.129",
+      "type": "tool_call",
+      "node": "execute",
+      "data": {
+        "tool": "search_places",
+        "args": {
+          "destination": "오사카",
+          "style": "outdoor",
+          "limit": 10,
+          "radius_m": 5000
+        }
+      }
+    },
+    {
+      "id": 1456,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 14,
+      "ts": "2026-11-20T10:35:39.940",
+      "type": "tool_result",
+      "node": "execute",
+      "data": {
+        "tool": "search_places",
+        "ok": true,
+        "ms": 806,
+        "code": null,
+        "brief": "outdoor 후보 10곳 (반경 5km)"
+      }
+    },
+    {
+      "id": 1457,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 15,
+      "ts": "2026-11-20T10:35:39.944",
+      "type": "tool_call",
+      "node": "execute",
+      "data": {
+        "tool": "get_weather",
+        "args": {
+          "lat": 34.6937569,
+          "lon": 135.5014539,
+          "visit_date": "2026-11-28"
+        }
+      }
+    },
+    {
+      "id": 1458,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 16,
+      "ts": "2026-11-20T10:35:40.745",
+      "type": "tool_result",
+      "node": "execute",
+      "data": {
+        "tool": "get_weather",
+        "ok": true,
+        "ms": 797,
+        "code": null,
+        "brief": "2026-11-28 강수확률 58%, 비, 부분적으로 흐린"
+      }
+    },
+    {
+      "id": 1459,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 17,
+      "ts": "2026-11-20T10:35:40.749",
+      "type": "tool_call",
+      "node": "execute",
+      "data": {
+        "tool": "get_schedule",
+        "args": {
+          "visit_date": "2026-11-28"
+        }
+      }
+    },
+    {
+      "id": 1460,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 18,
+      "ts": "2026-11-20T10:35:40.754",
+      "type": "tool_result",
+      "node": "execute",
+      "data": {
+        "tool": "get_schedule",
+        "ok": true,
+        "ms": 1,
+        "code": null,
+        "brief": "2026-11-28 일정 1건"
+      }
+    },
+    {
+      "id": 1461,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 19,
+      "ts": "2026-11-20T10:35:40.757",
+      "type": "node_end",
+      "node": "execute",
+      "data": {
+        "ms": 1628,
+        "summary": {
+          "results": {
+            "search_places": true,
+            "get_weather": true,
+            "get_schedule": true
+          }
+        }
+      }
+    },
+    {
+      "id": 1462,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 20,
+      "ts": "2026-11-20T10:35:40.761",
+      "type": "node_start",
+      "node": "judge",
+      "data": {}
+    },
+    {
+      "id": 1463,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 21,
+      "ts": "2026-11-20T10:35:40.765",
+      "type": "decision",
+      "node": "judge",
+      "data": {
+        "kind": "stop",
+        "reason": "2026-11-28 비 예보인데 실내로도, 다른 날로도 바꿀 수 없음"
+      }
+    },
+    {
+      "id": 1464,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 22,
+      "ts": "2026-11-20T10:35:40.769",
+      "type": "node_end",
+      "node": "judge",
+      "data": {
+        "ms": 4,
+        "summary": {
+          "action": "respond"
+        }
+      }
+    },
+    {
+      "id": 1465,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 23,
+      "ts": "2026-11-20T10:35:40.772",
+      "type": "node_start",
+      "node": "respond",
+      "data": {}
+    },
+    {
+      "id": 1466,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 24,
+      "ts": "2026-11-20T10:35:48.358",
+      "type": "llm_call",
+      "node": "respond",
+      "data": {
+        "purpose": "응답 작성",
+        "ms": 7581
+      }
+    },
+    {
+      "id": 1467,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 25,
+      "ts": "2026-11-20T10:35:48.362",
+      "type": "node_end",
+      "node": "respond",
+      "data": {
+        "ms": 7586,
+        "summary": {}
+      }
+    },
+    {
+      "id": 1468,
+      "session_id": "c30c004b8db8",
+      "run_id": "399ac0a88cda",
+      "seq": 26,
+      "ts": "2026-11-20T10:35:48.367",
+      "type": "run_end",
+      "node": null,
+      "data": {
+        "ok": true,
+        "ms": 13107,
+        "replans": 0,
+        "intent": "plan_trip",
+        "mode": "single",
+        "llm_calls": 2
+      }
+    }
+  ],
+  "evaluations": [
+    {
+      "run_id": "399ac0a88cda",
+      "session_id": "c30c004b8db8",
+      "verdict": "normal",
+      "warnings": [],
+      "diagnosis": null,
+      "diagnosis_error": null,
+      "created_at": "2026-11-20T10:35:48"
+    }
+  ]
+}

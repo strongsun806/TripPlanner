@@ -1,0 +1,152 @@
+{
+  "saved": [
+    {
+      "place_name": "Gallery Kaze",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "13:00:00",
+      "end_time": "14:35:00",
+      "lat": 34.6922436,
+      "lon": 135.5041317,
+      "memo": null,
+      "plan_id": 4,
+      "created_at": "2026-11-20T10:35:04"
+    },
+    {
+      "place_name": "Museum of Oriental Ceramics",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "14:40:00",
+      "end_time": "16:15:00",
+      "lat": 34.693421,
+      "lon": 135.505487,
+      "memo": null,
+      "plan_id": 5,
+      "created_at": "2026-11-20T10:35:04"
+    },
+    {
+      "place_name": "The Kitahama Plaza",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "16:25:00",
+      "end_time": "18:00:00",
+      "lat": 34.6892567,
+      "lon": 135.5068812,
+      "memo": null,
+      "plan_id": 6,
+      "created_at": "2026-11-20T10:35:04"
+    }
+  ],
+  "overlap_alert": [
+    {
+      "place_name": "Gallery Kaze",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "13:00:00",
+      "end_time": "14:35:00",
+      "lat": 34.6922436,
+      "lon": 135.5041317,
+      "memo": null,
+      "plan_id": 1,
+      "created_at": "2026-11-20T10:19:53"
+    },
+    {
+      "place_name": "Gallery Kaze",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "13:00:00",
+      "end_time": "14:35:00",
+      "lat": 34.6922436,
+      "lon": 135.5041317,
+      "memo": null,
+      "plan_id": 4,
+      "created_at": "2026-11-20T10:35:04"
+    }
+  ],
+  "list": [
+    {
+      "place_name": "Gallery Kaze",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "13:00:00",
+      "end_time": "14:35:00",
+      "lat": 34.6922436,
+      "lon": 135.5041317,
+      "memo": null,
+      "plan_id": 1,
+      "created_at": "2026-11-20T10:19:53"
+    },
+    {
+      "place_name": "Gallery Kaze",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "13:00:00",
+      "end_time": "14:35:00",
+      "lat": 34.6922436,
+      "lon": 135.5041317,
+      "memo": null,
+      "plan_id": 4,
+      "created_at": "2026-11-20T10:35:04"
+    },
+    {
+      "place_name": "오사카성 야경",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "13:00:00",
+      "end_time": "14:35:00",
+      "lat": null,
+      "lon": null,
+      "memo": "겹침 확인용",
+      "plan_id": 7,
+      "created_at": "2026-11-20T10:35:04"
+    },
+    {
+      "place_name": "Museum of Oriental Ceramics",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "14:40:00",
+      "end_time": "16:15:00",
+      "lat": 34.693421,
+      "lon": 135.505487,
+      "memo": null,
+      "plan_id": 2,
+      "created_at": "2026-11-20T10:19:53"
+    },
+    {
+      "place_name": "Museum of Oriental Ceramics",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "14:40:00",
+      "end_time": "16:15:00",
+      "lat": 34.693421,
+      "lon": 135.505487,
+      "memo": null,
+      "plan_id": 5,
+      "created_at": "2026-11-20T10:35:04"
+    },
+    {
+      "place_name": "The Kitahama Plaza",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "16:25:00",
+      "end_time": "18:00:00",
+      "lat": 34.6892567,
+      "lon": 135.5068812,
+      "memo": null,
+      "plan_id": 3,
+      "created_at": "2026-11-20T10:19:53"
+    },
+    {
+      "place_name": "The Kitahama Plaza",
+      "city": "오사카",
+      "visit_date": "2026-11-28",
+      "start_time": "16:25:00",
+      "end_time": "18:00:00",
+      "lat": 34.6892567,
+      "lon": 135.5068812,
+      "memo": null,
+      "plan_id": 6,
+      "created_at": "2026-11-20T10:35:04"
+    }
+  ]
+}

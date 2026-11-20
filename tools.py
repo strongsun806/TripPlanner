@@ -12,6 +12,7 @@
     · 비어 있는 값은 "" 나 0 으로 채우지 않는다 (None 으로 둔다)
 """
 import os
+import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Callable
@@ -57,12 +58,29 @@ class Tool:
             return fail("UPSTREAM_ERROR", "Tool 실행 중 오류입니다.")
 
 
+# ── ⑤ 키 가리기 (2일차 scrub 과 같은 방식) ─────────────────────
+SECRET_NAMES = ["GEOAPIFY_KEY", "VISUALCROSSING_KEY", "KAKAO_REST_KEY", "GMS_KEY", "GMS_API_KEY", "DATA_GO_KR_KEY"]
+PARAM = re.compile(r"(?i)\b(key|apikey|api_key|authkey|servicekey|token)=([^&\s'\"]+)")
+
+
+def scrub(text) -> str:
+    """오류 문구 · 로그에 키가 실려 나가지 않게 — 값으로 한 번, 이름=값 모양으로 한 번 가린다"""
+    text = str(text)
+    for name in SECRET_NAMES:
+        secret = os.getenv(name, "")
+        if secret:
+            text = text.replace(secret, "***")
+    text = re.sub(r"(?i)(KakaoAK|Bearer)\s+\S+", r"\1 ***", text)
+    return PARAM.sub(lambda m: f"{m.group(1)}=***", text)
+
+
 # ── 공통: 외부 API 한 번 부르기 ───────────────────────────────
 def call_api(url, params=None, headers=None):
     """(본문, None) 또는 (None, fail(...)) 을 돌려준다. 키가 든 주소는 오류 메시지에 넣지 않는다."""
     try:
         res = requests.get(url, params=params, headers=headers, timeout=15)
-    except requests.RequestException:
+    except requests.RequestException as e:
+        print("[log]", scrub(e))                  # 원인은 서버 로그에만, 키는 가린다
         return None, fail("UPSTREAM_ERROR", "외부 API를 부르지 못했습니다.")
     if res.status_code in (401, 403):
         return None, fail("INVALID_KEY", "API 키가 틀렸거나 권한이 없습니다.")
@@ -88,30 +106,54 @@ def pick_name(props):
     raw = props.get("datasource", {}).get("raw", {})
     return raw.get("name:ko") or raw.get("name:en") or props.get("name")
 
-def search_places(destination: str, style: str = "outdoor", limit: int = 10):
+_GEOCODE_CACHE: dict[str, dict] = {}
+
+def geocode(destination: str):
+    """여행지 이름 → 중심 좌표. Tool 이 아니라 실행 흐름이 직접 쓰는 도우미다
+    (모델 판단이 필요 없는 작업은 Tool 로 두지 않는다 — 명세서 2.3). 같은 이름은 한 번만 부른다."""
+    if not destination or not destination.strip():
+        return fail("BAD_ARGUMENT", "destination은 필수입니다.")
+    name = destination.strip()
+    if name in _GEOCODE_CACHE:
+        return ok(_GEOCODE_CACHE[name])
+    key = os.getenv(GEO_KEY_NAME)
+    if not key:
+        return fail("INVALID_KEY", f"{GEO_KEY_NAME}가 없습니다.")
+    body, err = call_api("https://api.geoapify.com/v1/geocode/search",
+                         {"text": name, "limit": 1, "lang": "ko", "format": "json", "apiKey": key})
+    if err:
+        return err
+    if not body.get("results"):
+        return fail("NOT_FOUND", f"'{name}'의 위치를 찾지 못했습니다.")
+    c = body["results"][0]
+    _GEOCODE_CACHE[name] = {"destination": c.get("formatted"), "lat": c["lat"], "lon": c["lon"],
+                            "country_code": c.get("country_code")}
+    return ok(_GEOCODE_CACHE[name])
+
+
+def search_places(destination: str, style: str = "outdoor", limit: int = 10, radius_m: int = 5000):
     if not destination or not destination.strip():
         return fail("BAD_ARGUMENT", "destination은 필수입니다.")
     if style not in CATEGORIES:
         return fail("BAD_ARGUMENT", f"style은 {list(CATEGORIES)} 중 하나입니다.")
     if not 1 <= limit <= 20:
         return fail("BAD_ARGUMENT", "limit은 1~20입니다.")
+    if not 500 <= radius_m <= 30000:
+        return fail("BAD_ARGUMENT", "radius_m은 500~30000입니다.")
     key = os.getenv(GEO_KEY_NAME)
     if not key:
         return fail("INVALID_KEY", f"{GEO_KEY_NAME}가 없습니다.")
 
     # 1) 여행지 이름 → 중심 좌표
-    body, err = call_api("https://api.geoapify.com/v1/geocode/search",
-                         {"text": destination, "limit": 1, "lang": "ko", "format": "json", "apiKey": key})
-    if err:
-        return err
-    if not body.get("results"):
-        return fail("NOT_FOUND", f"'{destination}'의 위치를 찾지 못했습니다.")
-    center = body["results"][0]
-    lon, lat = center["lon"], center["lat"]
+    center = geocode(destination)
+    if not center["ok"]:
+        return center
+    c = center["data"]
+    lat, lon = c["lat"], c["lon"]
 
-    # 2) 중심 반경 5km 안의 후보
+    # 2) 중심 반경 안의 후보 — 재계획 때 반경을 넓히거나 좁혀 다시 부른다
     body, err = call_api("https://api.geoapify.com/v2/places",
-                         {"categories": CATEGORIES[style], "filter": f"circle:{lon},{lat},5000",
+                         {"categories": CATEGORIES[style], "filter": f"circle:{lon},{lat},{radius_m}",
                           "bias": f"proximity:{lon},{lat}", "limit": limit, "lang": "ko", "apiKey": key})
     if err:
         return err
@@ -126,9 +168,9 @@ def search_places(destination: str, style: str = "outdoor", limit: int = 10):
                        "category": (p.get("categories") or [None])[0],
                        "country_code": p.get("country_code")})
     if not places:
-        return fail("NO_DATA", f"'{destination}' 주변에 {style} 후보가 없습니다.")
-    return ok({"destination": center.get("formatted"), "center": {"lat": lat, "lon": lon},
-               "country_code": center.get("country_code"), "style": style, "places": places})
+        return fail("NO_DATA", f"'{destination}' 반경 {radius_m // 1000}km 안에 {style} 후보가 없습니다.")
+    return ok({"destination": c["destination"], "center": {"lat": lat, "lon": lon},
+               "country_code": c["country_code"], "style": style, "radius_m": radius_m, "places": places})
 
 
 # ── ③-2 판단 근거 — Visual Crossing (F3003) ──────────────────
@@ -217,7 +259,9 @@ TOOLS = {t.name: t for t in [
          parameters={"type": "object",
                      "properties": {"destination": {"type": "string", "description": "여행지 이름. 예: 오사카, 서울 종로"},
                                     "style": {"type": "string", "enum": ["outdoor", "indoor"], "default": "outdoor"},
-                                    "limit": {"type": "integer", "minimum": 1, "maximum": 20, "default": 10}},
+                                    "limit": {"type": "integer", "minimum": 1, "maximum": 20, "default": 10},
+                                    "radius_m": {"type": "integer", "minimum": 500, "maximum": 30000, "default": 5000,
+                                                 "description": "여행지 중심에서 찾을 반경(m)"}},
                      "required": ["destination"]},
          func=search_places),
     Tool(name="get_weather",

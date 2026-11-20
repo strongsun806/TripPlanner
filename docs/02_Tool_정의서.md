@@ -1,4 +1,4 @@
-# Tool 정의서 (F3001 ~ F3004)
+# Tool 정의서 (F3001 ~ F3004, 심화 F3022 · F3023)
 
 > 구현: `tools.py` · 확인: `python tools.py` (결과 캡처 `images/4-1_tool_check.png`, 2026-11-18)
 
@@ -11,7 +11,8 @@
 
 - 성공도 실패도 이 모양으로 돌려준다. 예외는 `Tool.run()` 이 잡아 실패로 바꾼다.
 - 응답 원본을 넘기지 않고 판단에 쓸 값만 뽑는다. 비어 있는 값은 `None` 으로 둔다.
-- 키가 든 요청 주소는 오류 메시지에 넣지 않는다 (NF3002).
+- 키가 든 요청 주소는 오류 메시지에 넣지 않는다 (NF3002). 원인은 서버 로그에만 남기고, 그때도 `scrub()` 으로
+  키 값 · `key=…` · `KakaoAK …` 를 `***` 로 가린다 (2일차 ⑤와 같은 방식). 실행 이벤트의 오류 문구도 같은 함수를 거친다.
 
 ## 실패 코드
 
@@ -25,6 +26,8 @@
 | OUT_OF_RANGE | 예보 범위(오늘 ~ 14일 뒤) 밖의 날짜 | 아니오 — 날씨 판단 보류를 밝힌다 |
 | NO_FORECAST | 예보는 왔지만 강수확률이 비어 있다 | 아니오 — 날씨 판단하지 않음 |
 | OUT_OF_REGION | 카카오 로컬에 해외 좌표를 넣었다 | 아니오 — 보조 정보 없이 진행 |
+| NO_INDEX | 문서 색인이 아직 없다 (F3022) | 아니오 — '아직 모으지 못했다'고 답한다 |
+| ALREADY_REGISTERED | 이미 캘린더에 등록한 일정 (F3023) | 아니오 |
 
 ## Tool 목록
 
@@ -34,14 +37,15 @@
 |---|---|
 | 설명 (Agent 가 읽음) | 사용자가 여행지(도시 · 동네 이름)를 말했고 그곳에서 갈 만한 장소 후보가 필요할 때 부른다. 비가 와서 실내로 바꿔야 하면 style='indoor'로 다시 부른다. |
 | 외부 API | Geoapify Geocoding API → Places API (전 세계) |
-| 입력 | `destination` (string, 필수) · `style` ("outdoor" \| "indoor", 기본 outdoor) · `limit` (1~20, 기본 10) |
-| 출력 | `destination`(정식 주소), `center{lat, lon}`, `country_code`, `style`, `places[{place_id, name, lat, lon, category, country_code}]` |
+| 입력 | `destination` (string, 필수) · `style` ("outdoor" \| "indoor", 기본 outdoor) · `limit` (1~20, 기본 10) · `radius_m` (500~30000, 기본 5000 — 재계획 때 넓히거나 좁힌다) |
+| 출력 | `destination`(정식 주소), `center{lat, lon}`, `country_code`, `style`, `radius_m`, `places[{place_id, name, lat, lon, category, country_code}]` |
 | 실패 | BAD_ARGUMENT · INVALID_KEY · NOT_FOUND · NO_DATA · UPSTREAM_ERROR |
 | 다음 Tool 로 넘기는 값 | `center` 또는 `places[].lat/lon` → get_weather · search_nearby_food |
 
 - style → 카테고리: outdoor = 관광명소 · 공원 · 자연 · 해변 / indoor = 박물관 · 문화시설 · 아쿠아리움 · 쇼핑몰
 - 이름: 해외 장소는 현지어로 오므로 `name:ko` → `name:en` → `name` 순으로 고른다. 이름이 없는 장소는 뺀다.
-- 검색 반경: 여행지 중심 5km.
+- 검색 반경: 여행지 중심 5km 에서 시작. 후보가 없으면 10 · 20km 로 넓히고, 동선이 길면 2km 로 좁힌다 (재계획).
+- 여행지 이름 → 좌표는 `geocode()` 도우미가 한다. 판단이 필요 없는 일이라 Tool 로 등록하지 않고 실행 흐름(plan 단계)이 직접 부르며, 같은 이름은 한 번만 조회한다.
 
 ### 2. get_weather — 판단 근거 (F3003)
 
@@ -69,6 +73,40 @@
 
 - 결과 없음: `NO_DATA` + "반경 Nm 안에 'keyword' 결과가 없습니다."
 - 식당은 일정 장소와 **위치로만** 묶는다. 영업 여부 · 가격은 확인할 수 없으므로 지어내지 않는다.
+
+## 로컬 서버 API 툴 — 이 서비스가 가진 기능을 감싼 Tool (`app/agent/local_tools.py`)
+
+외부 API 툴과 같은 공통 응답 형식과 실패 코드를 쓴다. `GET /api/tools` 에서 `kind: "local"` 로 구분된다.
+
+### 4. get_schedule — 그날 내 약속 (심화 F3023)
+
+| 항목 | 내용 |
+|---|---|
+| 설명 | 여행 날짜가 정해졌을 때 그날 사용자의 다른 약속이 있는지 확인해야 할 때 부른다. 빈 시간에 맞춰 일정을 짠다. |
+| 구현체 | `CALENDAR_BACKEND=local`(SQLite, 기본) · `google`(Google Calendar API) — 입출력은 같다 |
+| 입력 | `visit_date` (YYYY-MM-DD, 필수) |
+| 출력 | `date`, `backend`, `events[{title, start_time, end_time, source, plan_id}]` |
+| 실패 | BAD_ARGUMENT · UPSTREAM_ERROR |
+| 판단 반영 | judge 가 시간창에서 약속과 겹치는 부분을 빼고 가장 긴 빈 구간에 일정을 넣는다 |
+
+### 5. register_schedule — 저장한 일정을 캘린더에 등록 (심화 F3023)
+
+| 항목 | 내용 |
+|---|---|
+| 설명 | 사용자가 저장한 여행 일정을 캘린더에 넣어 달라고 할 때 부른다. 일정 번호 하나만 받는다. |
+| 입력 | `plan_id` (integer, 필수) — 제목 · 날짜 · 시각은 Tool 인자가 아니라 서버가 저장소에서 읽는다 |
+| 출력 | `plan_id`, `title`, `date`, `start_time`, `end_time`, `backend`, `event` |
+| 실패 | BAD_ARGUMENT · NOT_FOUND · ALREADY_REGISTERED · UPSTREAM_ERROR |
+
+### 6. search_travel_docs — 여행지 지식 검색 (심화 F3022)
+
+| 항목 | 내용 |
+|---|---|
+| 설명 | 여행지의 특징 · 베스트 시즌 · 역사처럼 외부 API 로 확인할 수 없는 지식을 물었을 때 부른다. 근거 문서와 출처를 함께 돌려준다. |
+| 색인 | 2회차 TripPilot 의 ChromaDB — `travel_meta`(여행지 500건) · `travel_wiki`(위키백과 청크). 같은 임베딩(text-embedding-3-small, 실패 시 같은 해시 벡터) |
+| 입력 | `query` (string, 필수) · `k` (1~8, 기본 4) |
+| 출력 | `embedding`(openai · fallback), `collections{이름: 건수}`, `hits[{title, source, url, collection, snippet, distance}]` |
+| 실패 | BAD_ARGUMENT · NO_INDEX(색인 없음) · NO_DATA · UPSTREAM_ERROR |
 
 ## 시험 결과 (2026-11-18, `python tools.py`)
 

@@ -1,0 +1,170 @@
+<!doctype html>
+<!-- 실행 로그 화면 (F3014 · F3019)
+     로깅 Agent 가 세션 단위로 저장한 이벤트를 실행 순서대로 본다. 목록 · 상세 · 삭제만 있고 수정은 없다.
+     심화 F3020: 실행마다 규칙 판정(경고)과 LLM 진단을 따로 보여 준다. -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TripPlanner · 실행 로그</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="stylesheet" href="style.css?v=3" />
+  <style>
+    main { max-width: 1200px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: 320px minmax(0, 1fr);
+           gap: 24px; align-items: start; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    h2 { margin: 0 0 12px; font-size: 17px; }
+    .sessions { display: flex; flex-direction: column; gap: 8px; }
+    .session { text-align: left; border: 1.5px solid transparent; background: var(--paper); border-radius: 12px;
+               padding: 12px 14px; cursor: pointer; }
+    .session:hover { border-color: var(--rule); }
+    .session[aria-current="true"] { border-color: var(--navy); }
+    .session b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session span { font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }
+    .detail-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .detail-head p { margin: 0; color: var(--sub); font-size: 13px; }
+    .run { background: var(--paper); border-radius: 14px; margin-bottom: 18px; overflow: hidden; }
+    .run-head { padding: 14px 18px; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between;
+                gap: 12px; align-items: baseline; flex-wrap: wrap; }
+    .run-head b { font-size: 15px; }
+    .run-head span { color: var(--sub); font-size: 13px; font-variant-numeric: tabular-nums; }
+    .eval { padding: 12px 18px; border-bottom: 1px solid var(--rule); font-size: 14px; display: grid;
+            grid-template-columns: 110px 1fr; gap: 6px 12px; background: #f7f9fb; }
+    .eval dt { color: var(--sub); font-size: 13px; }
+    .eval dd { margin: 0; }
+    .eval ul { margin: 0; padding-left: 18px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; font-weight: 600; color: var(--sub); padding: 8px 10px; border-bottom: 1px solid var(--rule); }
+    td { padding: 7px 10px; border-bottom: 1px solid #edf0f4; vertical-align: top; }
+    td.n, td.t { font-variant-numeric: tabular-nums; color: var(--sub); white-space: nowrap; }
+    td:nth-child(3), td:nth-child(4) { white-space: nowrap; }
+    tr.replan td { background: var(--signal-soft); }
+    tr.fail td { background: #fdf3f2; }
+    td pre { margin: 0; white-space: pre-wrap; word-break: break-all; font-family: inherit; color: var(--sub); }
+  </style>
+</head>
+<body>
+  <header id="board" data-page="logs"></header>
+  <main>
+    <section aria-labelledby="sessTitle">
+      <h2 id="sessTitle">세션</h2>
+      <div class="sessions" id="sessions"></div>
+    </section>
+    <section aria-labelledby="detailTitle">
+      <div class="detail-head">
+        <div><h2 id="detailTitle">실행 기록</h2><p id="detailMeta">왼쪽에서 세션을 고르세요.</p></div>
+        <button class="btn danger small" id="deleteBtn" type="button" hidden>이 세션 로그 삭제</button>
+      </div>
+      <div id="detail"></div>
+    </section>
+  </main>
+
+  <script src="common.js?v=3"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let current = null;
+    renderBoard();
+
+    const TYPE = { run_start: "요청 시작", run_end: "요청 끝", node_start: "단계 진입", node_end: "단계 종료",
+                   decision: "판단", tool_call: "Tool 요청", tool_result: "Tool 응답", tool_cache_hit: "결과 재사용", error: "오류",
+                   llm_call: "LLM 호출" };
+    const VERDICT = { normal: ["ok", "이상 없음"], anomaly: ["warn", "이상 징후"], undecidable: ["", "판정 불가"] };
+
+    async function loadSessions() {
+      try {
+        const list = await (await fetch(`${API_BASE}/api/logs`)).json();
+        if (!list.length) {
+          $("sessions").innerHTML = `<div class="empty"><b>아직 로그가 없어요</b>대화 화면에서 요청을 보내면 여기에 쌓여요.</div>`;
+          return;
+        }
+        $("sessions").innerHTML = list.map((s) => `
+          <button class="session" type="button" data-id="${esc(s.session_id)}" ${s.session_id === current ? 'aria-current="true"' : ""}>
+            <b>${esc(s.first_message ?? s.session_id)}</b>
+            <span>${esc(s.last_ts.replace("T", " ").slice(0, 16))} · 요청 ${s.runs}건 · 이벤트 ${s.events}개</span>
+          </button>`).join("");
+        $("sessions").querySelectorAll(".session").forEach((b) => b.addEventListener("click", () => open(b.dataset.id)));
+      } catch {
+        $("sessions").innerHTML = `<div class="empty"><b>서버에 연결할 수 없어요</b><code>uvicorn app.main:app --reload</code> 로 켜 주세요.</div>`;
+      }
+    }
+
+    async function open(id) {
+      current = id;
+      document.querySelectorAll(".session").forEach((b) => b.setAttribute("aria-current", b.dataset.id === id));
+      const res = await fetch(`${API_BASE}/api/logs/${id}`);
+      if (!res.ok) { $("detail").innerHTML = ""; $("detailMeta").textContent = "이미 삭제된 세션이에요."; loadSessions(); return; }
+      const log = await res.json();
+      const runs = {};
+      log.events.forEach((e) => (runs[e.run_id] ??= []).push(e));
+      const evals = Object.fromEntries((log.evaluations || []).map((v) => [v.run_id, v]));
+      $("detailMeta").textContent = `세션 ${id} · 요청 ${Object.keys(runs).length}건 · 실행 순서대로`;
+      $("deleteBtn").hidden = false;
+      $("detail").innerHTML = Object.entries(runs).map(([rid, evs]) => runHtml(rid, evs, evals[rid])).join("");
+    }
+
+    function runHtml(rid, evs, ev) {
+      const start = evs.find((e) => e.type === "run_start"), end = evs.find((e) => e.type === "run_end");
+      const replans = evs.filter((e) => e.type === "decision" && e.data.kind === "replan").length;
+      const tools = evs.filter((e) => e.type === "tool_call" && !e.data.flow).length;
+      const llms = evs.filter((e) => e.type === "llm_call").length;
+      return `<article class="run">
+        <div class="run-head"><b>${esc(start?.data.message ?? rid)}</b>
+          <span>${end ? `${end.data.ok ? "성공" : "실패"} · ${(end.data.ms / 1000).toFixed(1)}초` : "진행 중"} · LLM ${llms}회 · Tool ${tools}회 · 재계획 ${replans}회${end?.data.mode ? " · " + esc(end.data.mode) : ""} · run ${esc(rid)}</span></div>
+        ${ev ? evalHtml(ev) : ""}
+        <table><thead><tr><th>#</th><th>시각</th><th>종류</th><th>단계</th><th>내용</th></tr></thead><tbody>
+        ${evs.map(rowHtml).join("")}</tbody></table></article>`;
+    }
+
+    // 판정(규칙)과 진단(LLM)은 다른 칸이다 (F3020)
+    function evalHtml(v) {
+      const [cls, label] = VERDICT[v.verdict] ?? ["", v.verdict];
+      return `<dl class="eval">
+        <dt>판정 (규칙)</dt><dd><span class="badge ${cls}">${label}</span>
+          ${v.warnings.length ? `<ul>${v.warnings.map((w) => `<li><b>${esc(w.code)}</b> ${esc(w.detail)}</li>`).join("")}</ul>` : ""}</dd>
+        ${v.verdict === "anomaly" ? `<dt>진단 (LLM)</dt><dd>${v.diagnosis ? esc(v.diagnosis)
+            : v.diagnosis_error ? `<span class="badge fail">진단 실패</span> ${esc(v.diagnosis_error)}` : "진단 중…"}</dd>` : ""}
+      </dl>`;
+    }
+
+    function rowHtml(e) {
+      const d = e.data;
+      const cls = e.type === "decision" && ["replan", "replan_cap"].includes(d.kind) ? "replan"
+                : (e.type === "tool_result" && !d.ok) || e.type === "error" ? "fail" : "";
+      return `<tr class="${cls}"><td class="n">${e.seq}</td><td class="t">${esc(e.ts.slice(11, 23))}</td>
+        <td>${TYPE[e.type] ?? esc(e.type)}</td><td>${esc(e.node ?? "")}</td><td>${summary(e)}</td></tr>`;
+    }
+
+    function summary(e) {
+      const d = e.data;
+      switch (e.type) {
+        case "run_start": return esc(d.message);
+        case "run_end": return `${d.ok ? "성공" : "실패"}, ${d.ms}ms, 의도 ${esc(d.intent ?? "-")}`;
+        case "node_end": return `${d.ms}ms`;
+        case "tool_call": return `<b>${esc(d.tool)}</b> <pre>${esc(JSON.stringify(d.args))}</pre>`;
+        case "tool_result": return `<b>${esc(d.tool)}</b> ${d.ok ? "성공" : esc(d.code)} · ${d.ms}ms<pre>${esc(d.brief ?? "")}</pre>`;
+        case "tool_cache_hit": return `<b>${esc(d.tool)}</b> 이미 받은 결과 재사용`;
+        case "decision": return `<b>${esc(d.kind)}</b> ${esc(d.intent ?? d.change ?? d.action ?? d.verdict ?? (d.steps ? d.steps.join(" → ") : ""))}${d.to ? ` <span class="badge">→ ${esc(d.to)}</span>` : ""}<pre>${esc(d.reason ?? d.question ?? "")}</pre>`;
+        case "error": return `<pre>${esc(d.code ?? d.error ?? "")} ${esc(d.message ?? "")}</pre>`;
+        case "llm_call": return `${esc(d.purpose)} · ${d.ms}ms`;
+        default: return "";
+      }
+    }
+
+    $("deleteBtn").addEventListener("click", async () => {
+      if (!current) return;
+      await fetch(`${API_BASE}/api/logs/${current}`, { method: "DELETE" });
+      $("detail").innerHTML = `<div class="notice ok">세션 로그를 삭제했어요.</div>`;
+      $("deleteBtn").hidden = true;
+      $("detailMeta").textContent = "왼쪽에서 세션을 고르세요.";
+      current = null;
+      loadSessions();
+    });
+
+    // 홈의 '최근 요청'에서 들어오면 그 세션을 바로 연다 (logs.html?session=…)
+    loadSessions().then(() => {
+      const sid = new URLSearchParams(location.search).get("session");
+      if (sid) open(sid);
+    });
+  </script>
+</body>
+</html>
