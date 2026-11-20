@@ -133,31 +133,52 @@ def wiki_link(raw: dict) -> dict | None:
 _WIKI_CACHE: dict[str, str | None] = {}
 
 
-def wiki_summary(wiki: dict | None) -> str | None:
-    """위키백과 요약 첫 문장 (출처: 위키백과, CC BY-SA). 못 가져오면 None — 일정은 그대로 진행한다"""
-    if not wiki or "wikipedia.org/wiki/" not in wiki.get("url", ""):
-        return None
-    url = wiki["url"]
-    if url in _WIKI_CACHE:
-        return _WIKI_CACHE[url]
-    host, title = url.split("/wiki/", 1)
-    text = None
+def _wiki_fetch(host: str, title: str) -> dict | None:
     try:
         r = requests.get(f"{host}/api/rest_v1/page/summary/{title}", timeout=4,
                          headers={"User-Agent": "TripPlanner/1.0 (SSAFY AI project)"})
         if r.ok:
-            extract = (r.json().get("extract") or "").strip()
-            first = re.split(r"(?<=\.)\s", extract, maxsplit=1)[0] if extract else ""
-            text = (first[:117] + "…") if len(first) > 120 else (first or None)
+            j = r.json()
+            if j.get("type") == "standard" and j.get("extract"):
+                return j
     except requests.RequestException:
-        text = None
-    _WIKI_CACHE[url] = text
-    return text
+        pass
+    return None
+
+
+def wiki_summary(wiki: dict | None, name: str | None = None) -> dict | None:
+    """위키백과 요약 첫 문장 (출처: 위키백과, CC BY-SA). 한국어 문서를 먼저 — 태그가 영어 문서면 장소 이름으로
+    한국어 위키백과를 한 번 더 찾는다. 못 가져오면 None — 일정은 그대로 진행한다.
+    돌려주는 값: {"about": 첫 문장, "url": 실제로 읽은 문서 주소}"""
+    if not wiki or "wikipedia.org/wiki/" not in wiki.get("url", ""):
+        return None
+    url = wiki["url"]
+    key = f"{url}|{name}"
+    if key in _WIKI_CACHE:
+        return _WIKI_CACHE[key]
+    host, title = url.split("/wiki/", 1)
+    tries = [(host, title)]
+    if "ko.wikipedia" not in host and name and re.search(r"[가-힣]", name):
+        tries.insert(0, ("https://ko.wikipedia.org", name.replace(" ", "_")))
+    out = None
+    for h, t in tries:
+        j = _wiki_fetch(h, t)
+        if j:
+            first = re.split(r"(?<=\.)\s", j["extract"].strip(), maxsplit=1)[0]
+            out = {"about": (first[:117] + "…") if len(first) > 120 else first, "url": f"{h}/wiki/{t}"}
+            break
+    _WIKI_CACHE[key] = out
+    return out
+
+
+MINOR = ("tourism.attraction.artwork", "tourism.sights.memorial", "tourism.attraction.viewpoint")
 
 
 def place_score(cats: list[str], wiki: dict | None) -> int:
-    """이름난 관광지일수록 높게 — 위키백과 문서 > 명소 · 박물관 분류 > 나머지"""
+    """이름난 관광지일수록 높게 — 위키백과 문서 > 명소 · 박물관 분류 > 나머지. 조형물 · 기념 표지는 낮게"""
     score = 3 if wiki else 0
+    if any(c.startswith(MINOR) for c in cats) and not wiki:
+        return score - 2
     if any(c.startswith(("tourism.attraction", "tourism.sights.castle", "tourism.sights.place_of_worship.temple",
                          "entertainment.museum", "heritage")) for c in cats):
         score += 2

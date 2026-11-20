@@ -114,8 +114,11 @@ def route(center: dict, places: list[dict]) -> tuple[list[dict], list[dict], lis
 
 
 def build_itinerary(center: dict, places: list[dict], start: int, end: int) -> dict:
-    """시간창 [start, end] 안에 넣을 수 있는 가장 많은 장소(최대 MAX_PLACES)로 일정을 만든다."""
-    order, legs, excluded = route(center, places)
+    """시간창 [start, end] 안에 넣을 수 있는 가장 많은 장소(최대 MAX_PLACES)로 일정을 만든다.
+    이름난 곳(score — 위키백과 문서 · 명소 분류)을 먼저 고르고, 고른 곳끼리 동선을 잇는다."""
+    ranked = sorted(places, key=lambda p: -p.get("score", 0))        # 안정 정렬 — 점수가 같으면 원래 순서
+    pool, rest = ranked[: config.MAX_PLACES + 2], ranked[config.MAX_PLACES + 2:]
+    order, legs, excluded = route(center, pool)
     available = end - start
     for n in range(min(config.MAX_PLACES, len(order)), 0, -1):
         travel = sum(legs[: n - 1])
@@ -129,9 +132,11 @@ def build_itinerary(center: dict, places: list[dict], start: int, end: int) -> d
                               "start_time": fmt(t), "end_time": fmt(t + stay), "stay_min": stay,
                               "walk_to_next_min": leg})
                 t += stay + (leg or 0)
-            unused = order[n:]
+            unused = order[n:] + rest                                  # 고르지 않은 후보 (제외 사유용)
             excluded += [{"name": p["name"],
-                          "reason": f"더 넣으면 장소당 체류가 {config.MIN_STAY_MIN}분 미만"} for p in unused[:3]]
+                          "reason": f"더 넣으면 장소당 체류가 {config.MIN_STAY_MIN}분 미만"} for p in order[n:][:3]]
+            excluded += [{"name": p["name"], "reason": "더 이름난 후보(위키백과 문서 · 명소)를 먼저 골라 뺌"}
+                         for p in rest[: max(0, 3 - len(order[n:]))]]
             return {"ok": True, "items": items, "stay_min": stay, "travel_min": travel,
                     "window": [fmt(start), fmt(end)], "available_min": available,
                     "latest_leave": items[-1]["end_time"], "excluded": excluded, "unused_count": len(unused)}
